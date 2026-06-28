@@ -5,6 +5,7 @@ import transactionsRouter from "./transactions";
 import productsRouter from "./products";
 import dashboardRouter from "./dashboard";
 import authRouter from "./auth";
+import salesOrdersRouter from "./sales-orders";
 import { requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -15,5 +16,6 @@ router.use("/customers", requireAuth, customersRouter);
 router.use("/transactions", requireAuth, transactionsRouter);
 router.use("/products", requireAuth, productsRouter);
 router.use("/dashboard", requireAuth, dashboardRouter);
+router.use("/sales-orders", requireAuth, salesOrdersRouter);
 
 export default router;
