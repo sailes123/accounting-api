@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, transactionsTable, customersTable } from "../db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import {
   CreateTransactionBody,
   UpdateTransactionBody,
@@ -9,6 +9,7 @@ import {
   DeleteTransactionParams,
   ListTransactionsQueryParams,
 } from "../lib/api";
+import type { AuthRequest } from "../middlewares/auth";
 
 const router = Router();
 
@@ -43,6 +44,7 @@ function fmt(
 }
 
 router.get("/", async (req, res) => {
+  const userId = (req as AuthRequest).userId!;
   const parsed = ListTransactionsQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid query params" });
@@ -56,7 +58,11 @@ router.get("/", async (req, res) => {
         customerPhone: customersTable.phone,
       })
       .from(transactionsTable)
-      .leftJoin(customersTable, eq(transactionsTable.customerId, customersTable.id))
+      .leftJoin(customersTable, and(
+        eq(transactionsTable.customerId, customersTable.id),
+        eq(customersTable.userId, userId)
+      ))
+      .where(eq(transactionsTable.userId, userId))
       .orderBy(desc(transactionsTable.createdAt));
 
     if (parsed.data.type) {
@@ -73,6 +79,7 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
+  const userId = (req as AuthRequest).userId!;
   const parsed = CreateTransactionBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request body" });
@@ -83,6 +90,7 @@ router.post("/", async (req, res) => {
     const [transaction] = await db
       .insert(transactionsTable)
       .values({
+        userId,
         title,
         amount: String(amount),
         type,
@@ -95,7 +103,10 @@ router.post("/", async (req, res) => {
     let customerName: string | null = null;
     let customerPhone: string | null = null;
     if (transaction.customerId) {
-      const [c] = await db.select().from(customersTable).where(eq(customersTable.id, transaction.customerId));
+      const [c] = await db
+        .select()
+        .from(customersTable)
+        .where(and(eq(customersTable.id, transaction.customerId), eq(customersTable.userId, userId)));
       if (c) { customerName = c.name; customerPhone = c.phone; }
     }
     res.status(201).json(fmt(transaction, customerName, customerPhone));
@@ -106,6 +117,7 @@ router.post("/", async (req, res) => {
 });
 
 router.get("/:id", async (req, res) => {
+  const userId = (req as AuthRequest).userId!;
   const parsed = GetTransactionParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid id" });
@@ -119,8 +131,11 @@ router.get("/:id", async (req, res) => {
         customerPhone: customersTable.phone,
       })
       .from(transactionsTable)
-      .leftJoin(customersTable, eq(transactionsTable.customerId, customersTable.id))
-      .where(eq(transactionsTable.id, parsed.data.id));
+      .leftJoin(customersTable, and(
+        eq(transactionsTable.customerId, customersTable.id),
+        eq(customersTable.userId, userId)
+      ))
+      .where(and(eq(transactionsTable.id, parsed.data.id), eq(transactionsTable.userId, userId)));
     if (!row) {
       res.status(404).json({ error: "Not found" });
       return;
@@ -133,6 +148,7 @@ router.get("/:id", async (req, res) => {
 });
 
 router.patch("/:id", async (req, res) => {
+  const userId = (req as AuthRequest).userId!;
   const idParsed = UpdateTransactionParams.safeParse({ id: Number(req.params.id) });
   if (!idParsed.success) {
     res.status(400).json({ error: "Invalid id" });
@@ -154,7 +170,7 @@ router.patch("/:id", async (req, res) => {
     const [transaction] = await db
       .update(transactionsTable)
       .set(updates)
-      .where(eq(transactionsTable.id, idParsed.data.id))
+      .where(and(eq(transactionsTable.id, idParsed.data.id), eq(transactionsTable.userId, userId)))
       .returning();
     if (!transaction) {
       res.status(404).json({ error: "Not found" });
@@ -163,7 +179,10 @@ router.patch("/:id", async (req, res) => {
     let customerName: string | null = null;
     let customerPhone: string | null = null;
     if (transaction.customerId) {
-      const [c] = await db.select().from(customersTable).where(eq(customersTable.id, transaction.customerId));
+      const [c] = await db
+        .select()
+        .from(customersTable)
+        .where(and(eq(customersTable.id, transaction.customerId), eq(customersTable.userId, userId)));
       if (c) { customerName = c.name; customerPhone = c.phone; }
     }
     res.json(fmt(transaction, customerName, customerPhone));
@@ -174,13 +193,16 @@ router.patch("/:id", async (req, res) => {
 });
 
 router.delete("/:id", async (req, res) => {
+  const userId = (req as AuthRequest).userId!;
   const parsed = DeleteTransactionParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid id" });
     return;
   }
   try {
-    await db.delete(transactionsTable).where(eq(transactionsTable.id, parsed.data.id));
+    await db
+      .delete(transactionsTable)
+      .where(and(eq(transactionsTable.id, parsed.data.id), eq(transactionsTable.userId, userId)));
     res.status(204).send();
   } catch (err) {
     req.log.error({ err }, "Failed to delete transaction");

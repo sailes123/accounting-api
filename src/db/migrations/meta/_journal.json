@@ -15,6 +15,13 @@
       "when": 1782631463030,
       "tag": "0001_slippery_demogoblin",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782637287055,
+      "tag": "0002_hard_spot",
+      "breakpoints": true
     }
   ]
 }

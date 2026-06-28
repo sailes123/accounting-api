@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, customersTable, transactionsTable } from "../db";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and } from "drizzle-orm";
+import type { AuthRequest } from "../middlewares/auth";
 
 const router = Router();
 
@@ -10,6 +11,7 @@ function billNo(type: string, id: number) {
 }
 
 router.get("/summary", async (req, res) => {
+  const userId = (req as AuthRequest).userId!;
   try {
     const today = new Date().toISOString().slice(0, 10);
     const monthStart = today.slice(0, 7) + "-01";
@@ -17,41 +19,42 @@ router.get("/summary", async (req, res) => {
     const [todayResult] = await db
       .select({ total: sql<string>`COALESCE(SUM(amount::numeric), 0)` })
       .from(transactionsTable)
-      .where(sql`type = 'income' AND date = ${today}`);
+      .where(sql`type = 'income' AND date = ${today} AND user_id = ${userId}`);
 
     const [monthResult] = await db
       .select({ total: sql<string>`COALESCE(SUM(amount::numeric), 0)` })
       .from(transactionsTable)
-      .where(sql`type = 'income' AND date >= ${monthStart}`);
+      .where(sql`type = 'income' AND date >= ${monthStart} AND user_id = ${userId}`);
 
     const [todayPurchaseResult] = await db
       .select({ total: sql<string>`COALESCE(SUM(amount::numeric), 0)` })
       .from(transactionsTable)
-      .where(sql`type = 'expense' AND date = ${today}`);
+      .where(sql`type = 'expense' AND date = ${today} AND user_id = ${userId}`);
 
     const [monthPurchaseResult] = await db
       .select({ total: sql<string>`COALESCE(SUM(amount::numeric), 0)` })
       .from(transactionsTable)
-      .where(sql`type = 'expense' AND date >= ${monthStart}`);
+      .where(sql`type = 'expense' AND date >= ${monthStart} AND user_id = ${userId}`);
 
     const [todayExpenseResult] = await db
       .select({ total: sql<string>`COALESCE(SUM(amount::numeric), 0)` })
       .from(transactionsTable)
-      .where(sql`type = 'expense' AND date = ${today}`);
+      .where(sql`type = 'expense' AND date = ${today} AND user_id = ${userId}`);
 
     const [monthExpenseResult] = await db
       .select({ total: sql<string>`COALESCE(SUM(amount::numeric), 0)` })
       .from(transactionsTable)
-      .where(sql`type = 'expense' AND date >= ${monthStart}`);
+      .where(sql`type = 'expense' AND date >= ${monthStart} AND user_id = ${userId}`);
 
     const [udharoResult] = await db
       .select({ total: sql<string>`COALESCE(SUM(amount::numeric), 0)` })
       .from(transactionsTable)
-      .where(sql`type = 'udharo'`);
+      .where(sql`type = 'udharo' AND user_id = ${userId}`);
 
     const [customerCount] = await db
       .select({ count: sql<string>`COUNT(*)` })
-      .from(customersTable);
+      .from(customersTable)
+      .where(eq(customersTable.userId, userId));
 
     res.json({
       todaySales: Number(todayResult?.total ?? 0),
@@ -70,6 +73,7 @@ router.get("/summary", async (req, res) => {
 });
 
 router.get("/recent-transactions", async (req, res) => {
+  const userId = (req as AuthRequest).userId!;
   try {
     const rows = await db
       .select({
@@ -78,7 +82,11 @@ router.get("/recent-transactions", async (req, res) => {
         customerPhone: customersTable.phone,
       })
       .from(transactionsTable)
-      .leftJoin(customersTable, eq(transactionsTable.customerId, customersTable.id))
+      .leftJoin(customersTable, and(
+        eq(transactionsTable.customerId, customersTable.id),
+        eq(customersTable.userId, userId)
+      ))
+      .where(eq(transactionsTable.userId, userId))
       .orderBy(desc(transactionsTable.createdAt))
       .limit(10);
 
@@ -104,10 +112,12 @@ router.get("/recent-transactions", async (req, res) => {
 });
 
 router.get("/top-customers", async (req, res) => {
+  const userId = (req as AuthRequest).userId!;
   try {
     const customers = await db
       .select()
       .from(customersTable)
+      .where(eq(customersTable.userId, userId))
       .orderBy(desc(customersTable.balance))
       .limit(5);
 

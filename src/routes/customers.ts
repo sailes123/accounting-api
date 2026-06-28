@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, customersTable } from "../db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import {
   CreateCustomerBody,
   UpdateCustomerBody,
@@ -8,6 +8,7 @@ import {
   UpdateCustomerParams,
   DeleteCustomerParams,
 } from "../lib/api";
+import type { AuthRequest } from "../middlewares/auth";
 
 const router = Router();
 
@@ -23,8 +24,13 @@ function fmt(c: typeof customersTable.$inferSelect) {
 }
 
 router.get("/", async (req, res) => {
+  const userId = (req as AuthRequest).userId!;
   try {
-    const customers = await db.select().from(customersTable).orderBy(desc(customersTable.createdAt));
+    const customers = await db
+      .select()
+      .from(customersTable)
+      .where(eq(customersTable.userId, userId))
+      .orderBy(desc(customersTable.createdAt));
     res.json(customers.map(fmt));
   } catch (err) {
     req.log.error({ err }, "Failed to list customers");
@@ -33,6 +39,7 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
+  const userId = (req as AuthRequest).userId!;
   const parsed = CreateCustomerBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request body" });
@@ -40,12 +47,10 @@ router.post("/", async (req, res) => {
   }
   const { name, phone, address, balance } = parsed.data;
   try {
-    const [customer] = await db.insert(customersTable).values({
-      name,
-      phone,
-      address,
-      balance: String(balance ?? 0),
-    }).returning();
+    const [customer] = await db
+      .insert(customersTable)
+      .values({ userId, name, phone, address, balance: String(balance ?? 0) })
+      .returning();
     res.status(201).json(fmt(customer));
   } catch (err) {
     req.log.error({ err }, "Failed to create customer");
@@ -54,13 +59,17 @@ router.post("/", async (req, res) => {
 });
 
 router.get("/:id", async (req, res) => {
+  const userId = (req as AuthRequest).userId!;
   const parsed = GetCustomerParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid id" });
     return;
   }
   try {
-    const [customer] = await db.select().from(customersTable).where(eq(customersTable.id, parsed.data.id));
+    const [customer] = await db
+      .select()
+      .from(customersTable)
+      .where(and(eq(customersTable.id, parsed.data.id), eq(customersTable.userId, userId)));
     if (!customer) {
       res.status(404).json({ error: "Not found" });
       return;
@@ -73,6 +82,7 @@ router.get("/:id", async (req, res) => {
 });
 
 router.patch("/:id", async (req, res) => {
+  const userId = (req as AuthRequest).userId!;
   const idParsed = UpdateCustomerParams.safeParse({ id: Number(req.params.id) });
   if (!idParsed.success) {
     res.status(400).json({ error: "Invalid id" });
@@ -89,7 +99,11 @@ router.patch("/:id", async (req, res) => {
   if (parsed.data.address !== undefined) updates.address = parsed.data.address;
   if (parsed.data.balance !== undefined) updates.balance = String(parsed.data.balance);
   try {
-    const [customer] = await db.update(customersTable).set(updates).where(eq(customersTable.id, idParsed.data.id)).returning();
+    const [customer] = await db
+      .update(customersTable)
+      .set(updates)
+      .where(and(eq(customersTable.id, idParsed.data.id), eq(customersTable.userId, userId)))
+      .returning();
     if (!customer) {
       res.status(404).json({ error: "Not found" });
       return;
@@ -102,13 +116,16 @@ router.patch("/:id", async (req, res) => {
 });
 
 router.delete("/:id", async (req, res) => {
+  const userId = (req as AuthRequest).userId!;
   const parsed = DeleteCustomerParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid id" });
     return;
   }
   try {
-    await db.delete(customersTable).where(eq(customersTable.id, parsed.data.id));
+    await db
+      .delete(customersTable)
+      .where(and(eq(customersTable.id, parsed.data.id), eq(customersTable.userId, userId)));
     res.status(204).send();
   } catch (err) {
     req.log.error({ err }, "Failed to delete customer");
