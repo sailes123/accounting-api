@@ -329,3 +329,153 @@ export const GetTopCustomersResponseItem = zod.object({
 export const GetTopCustomersResponse = zod.array(GetTopCustomersResponseItem)
 
 
+/**
+ * @summary List all categories
+ */
+export const ListCategoriesResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "parentCategoryId": zod.number().nullish(),
+  "description": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListCategoriesResponse = zod.array(ListCategoriesResponseItem)
+
+
+/**
+ * @summary Create a new category
+ */
+
+
+
+export const CreateCategoryBody = zod.object({
+  "name": zod.string().min(1),
+  "parentCategoryId": zod.number().nullish(),
+  "description": zod.string().nullish()
+})
+
+
+/**
+ * @summary Get a category by ID
+ */
+export const GetCategoryParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetCategoryResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "parentCategoryId": zod.number().nullish(),
+  "description": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Update a category
+ */
+export const UpdateCategoryParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const UpdateCategoryBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "parentCategoryId": zod.number().nullish(),
+  "description": zod.string().nullish()
+})
+
+export const UpdateCategoryResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "parentCategoryId": zod.number().nullish(),
+  "description": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Delete a category
+ */
+export const DeleteCategoryParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary List all units
+ */
+export const ListUnitsResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "shortName": zod.string(),
+  "acceptFraction": zod.boolean(),
+  "createdAt": zod.string()
+})
+export const ListUnitsResponse = zod.array(ListUnitsResponseItem)
+
+
+/**
+ * @summary Create a new unit
+ */
+
+
+
+export const CreateUnitBody = zod.object({
+  "name": zod.string().min(1),
+  "shortName": zod.string().min(1),
+  "acceptFraction": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Get a unit by ID
+ */
+export const GetUnitParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetUnitResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "shortName": zod.string(),
+  "acceptFraction": zod.boolean(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Update a unit
+ */
+export const UpdateUnitParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const UpdateUnitBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "shortName": zod.string().min(1).optional(),
+  "acceptFraction": zod.boolean().optional()
+})
+
+export const UpdateUnitResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "shortName": zod.string(),
+  "acceptFraction": zod.boolean(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Delete a unit
+ */
+export const DeleteUnitParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
