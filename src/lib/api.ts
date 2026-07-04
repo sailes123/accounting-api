@@ -411,6 +411,7 @@ export const ListUnitsResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "shortName": zod.string(),
+  "description": zod.string().nullish(),
   "acceptFraction": zod.boolean(),
   "createdAt": zod.string()
 })
@@ -426,6 +427,7 @@ export const ListUnitsResponse = zod.array(ListUnitsResponseItem)
 export const CreateUnitBody = zod.object({
   "name": zod.string().min(1),
   "shortName": zod.string().min(1),
+  "description": zod.string().nullish(),
   "acceptFraction": zod.boolean().optional()
 })
 
@@ -441,6 +443,7 @@ export const GetUnitResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "shortName": zod.string(),
+  "description": zod.string().nullish(),
   "acceptFraction": zod.boolean(),
   "createdAt": zod.string()
 })
@@ -459,6 +462,7 @@ export const UpdateUnitParams = zod.object({
 export const UpdateUnitBody = zod.object({
   "name": zod.string().min(1).optional(),
   "shortName": zod.string().min(1).optional(),
+  "description": zod.string().nullish(),
   "acceptFraction": zod.boolean().optional()
 })
 
@@ -466,6 +470,7 @@ export const UpdateUnitResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "shortName": zod.string(),
+  "description": zod.string().nullish(),
   "acceptFraction": zod.boolean(),
   "createdAt": zod.string()
 })

@@ -7,6 +7,7 @@ export const unitsTable = pgTable("units", {
   userId: integer("user_id").notNull(),
   name: text("name").notNull(),
   shortName: text("short_name").notNull(),
+  description: text("description"),
   acceptFraction: boolean("accept_fraction").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

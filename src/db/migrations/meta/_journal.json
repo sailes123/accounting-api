@@ -43,6 +43,13 @@
       "when": 1783147795323,
       "tag": "0005_rare_pyro",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783148229373,
+      "tag": "0006_unusual_grey_gargoyle",
+      "breakpoints": true
     }
   ]
 }

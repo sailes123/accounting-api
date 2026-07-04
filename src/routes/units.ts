@@ -17,6 +17,7 @@ function fmt(u: typeof unitsTable.$inferSelect) {
     id: u.id,
     name: u.name,
     shortName: u.shortName,
+    description: u.description,
     acceptFraction: u.acceptFraction,
     createdAt: u.createdAt.toISOString(),
   };
@@ -44,11 +45,11 @@ router.post("/", async (req, res) => {
     res.status(400).json({ error: "Invalid request body" });
     return;
   }
-  const { name, shortName, acceptFraction } = parsed.data;
+  const { name, shortName, description, acceptFraction } = parsed.data;
   try {
     const [unit] = await db
       .insert(unitsTable)
-      .values({ userId, name, shortName, acceptFraction })
+      .values({ userId, name, shortName, description, acceptFraction })
       .returning();
     res.status(201).json(fmt(unit));
   } catch (err) {
@@ -95,6 +96,7 @@ router.patch("/:id", async (req, res) => {
   const updates: Record<string, unknown> = {};
   if (parsed.data.name !== undefined) updates.name = parsed.data.name;
   if (parsed.data.shortName !== undefined) updates.shortName = parsed.data.shortName;
+  if (parsed.data.description !== undefined) updates.description = parsed.data.description;
   if (parsed.data.acceptFraction !== undefined) updates.acceptFraction = parsed.data.acceptFraction;
   try {
     const [unit] = await db
