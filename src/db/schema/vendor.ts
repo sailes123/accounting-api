@@ -20,10 +20,10 @@ export const vendorsTable = pgTable("vendors", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const inserVendorSchema = createInsertSchema(vendorsTable).omit({
+export const insertVendorSchema = createInsertSchema(vendorsTable).omit({
         id: true,
         userId: true,
         createdAt: true
 })
-export type InsertVendor = z.infer<typeof inserVendorSchema>;
+export type InsertVendor = z.infer<typeof insertVendorSchema>;
 export type Vendor = typeof vendorsTable.$inferSelect;

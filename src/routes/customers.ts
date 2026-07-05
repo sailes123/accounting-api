@@ -16,8 +16,12 @@ function fmt(c: typeof customersTable.$inferSelect) {
   return {
     id: c.id,
     name: c.name,
+    email: c.email,
     phone: c.phone,
     address: c.address,
+    panType: c.panType,
+    panNumber: c.panNumber,
+    remarks: c.remarks,
     balance: Number(c.balance),
     createdAt: c.createdAt.toISOString(),
   };
@@ -45,11 +49,11 @@ router.post("/", async (req, res) => {
     res.status(400).json({ error: "Invalid request body" });
     return;
   }
-  const { name, phone, address, balance } = parsed.data;
+  const { name, email, phone, address, panType, panNumber, remarks, balance } = parsed.data;
   try {
     const [customer] = await db
       .insert(customersTable)
-      .values({ userId, name, phone, address, balance: String(balance ?? 0) })
+      .values({ userId, name, email, phone, address, panType, panNumber, remarks, balance: String(balance ?? 0) })
       .returning();
     res.status(201).json(fmt(customer));
   } catch (err) {
@@ -95,8 +99,12 @@ router.patch("/:id", async (req, res) => {
   }
   const updates: Record<string, unknown> = {};
   if (parsed.data.name !== undefined) updates.name = parsed.data.name;
+  if (parsed.data.email !== undefined) updates.email = parsed.data.email;
   if (parsed.data.phone !== undefined) updates.phone = parsed.data.phone;
   if (parsed.data.address !== undefined) updates.address = parsed.data.address;
+  if (parsed.data.panType !== undefined) updates.panType = parsed.data.panType;
+  if (parsed.data.panNumber !== undefined) updates.panNumber = parsed.data.panNumber;
+  if (parsed.data.remarks !== undefined) updates.remarks = parsed.data.remarks;
   if (parsed.data.balance !== undefined) updates.balance = String(parsed.data.balance);
   try {
     const [customer] = await db
