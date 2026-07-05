@@ -483,4 +483,37 @@ export const DeleteUnitParams = zod.object({
   "id": zod.coerce.number()
 })
 
+/**
+ * @summary Create a new vendor
+ */
 
+
+
+export const CreateVendorBody = zod.object({
+  "name": zod.string().min(1),
+  "phone": zod.string(),
+  "address": zod.string(),
+  "balance": zod.number().optional(),
+  "email": zod.email().optional(),
+})
+
+/**
+ * @summary Get a customer by ID
+ */
+export const GetVendorParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+/**
+ * @summary Update a customer
+ */
+
+
+
+
+export const UpdateVendorBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "phone": zod.string().optional(),
+  "address": zod.string().optional(),
+  "balance": zod.number().optional()
+})
