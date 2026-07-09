@@ -226,12 +226,31 @@ export const DeleteTransactionParams = zod.object({
 /**
  * @summary List all products
  */
+export const ProductType = zod.enum(['Goods', 'Services'])
+
 export const ListProductsResponseItem = zod.object({
   "id": zod.number(),
+  "type": ProductType,
   "name": zod.string(),
+  "category": zod.string().nullish(),
+  "subCategory": zod.string().nullish(),
+  "hsnCode": zod.string().nullish(),
+  "sku": zod.string().nullish(),
+  "reorderPoint": zod.number().nullish(),
+  "description": zod.string().nullish(),
+  "unit": zod.string().nullish(),
+  "subUnit": zod.string().nullish(),
+  "unitConvFrom": zod.number().nullish(),
+  "unitConvTo": zod.number().nullish(),
   "stock": zod.number(),
   "sellingPrice": zod.number(),
   "purchasePrice": zod.number(),
+  "secondarySellingPrice": zod.number().nullish(),
+  "size": zod.string().nullish(),
+  "expiryDate": zod.string().nullish(),
+  "customerId": zod.number().nullish(),
+  "purchaseNonTaxable": zod.boolean(),
+  "salesNonTaxable": zod.boolean(),
   "createdAt": zod.string()
 })
 export const ListProductsResponse = zod.array(ListProductsResponseItem)
@@ -244,10 +263,27 @@ export const ListProductsResponse = zod.array(ListProductsResponseItem)
 
 
 export const CreateProductBody = zod.object({
+  "type": ProductType.optional(),
   "name": zod.string().min(1),
+  "category": zod.string().optional(),
+  "subCategory": zod.string().optional(),
+  "hsnCode": zod.string().optional(),
+  "sku": zod.string().optional(),
+  "reorderPoint": zod.number().optional(),
+  "description": zod.string().optional(),
+  "unit": zod.string().optional(),
+  "subUnit": zod.string().optional(),
+  "unitConvFrom": zod.number().optional(),
+  "unitConvTo": zod.number().optional(),
   "stock": zod.number(),
   "sellingPrice": zod.number(),
-  "purchasePrice": zod.number()
+  "purchasePrice": zod.number(),
+  "secondarySellingPrice": zod.number().optional(),
+  "size": zod.string().optional(),
+  "expiryDate": zod.string().optional(),
+  "customerId": zod.number().nullish(),
+  "purchaseNonTaxable": zod.boolean().optional(),
+  "salesNonTaxable": zod.boolean().optional()
 })
 
 
@@ -258,14 +294,7 @@ export const GetProductParams = zod.object({
   "id": zod.coerce.number()
 })
 
-export const GetProductResponse = zod.object({
-  "id": zod.number(),
-  "name": zod.string(),
-  "stock": zod.number(),
-  "sellingPrice": zod.number(),
-  "purchasePrice": zod.number(),
-  "createdAt": zod.string()
-})
+export const GetProductResponse = ListProductsResponseItem
 
 
 /**
@@ -279,20 +308,30 @@ export const UpdateProductParams = zod.object({
 
 
 export const UpdateProductBody = zod.object({
+  "type": ProductType.optional(),
   "name": zod.string().min(1).optional(),
+  "category": zod.string().optional(),
+  "subCategory": zod.string().optional(),
+  "hsnCode": zod.string().optional(),
+  "sku": zod.string().optional(),
+  "reorderPoint": zod.number().optional(),
+  "description": zod.string().optional(),
+  "unit": zod.string().optional(),
+  "subUnit": zod.string().optional(),
+  "unitConvFrom": zod.number().optional(),
+  "unitConvTo": zod.number().optional(),
   "stock": zod.number().optional(),
   "sellingPrice": zod.number().optional(),
-  "purchasePrice": zod.number().optional()
+  "purchasePrice": zod.number().optional(),
+  "secondarySellingPrice": zod.number().optional(),
+  "size": zod.string().optional(),
+  "expiryDate": zod.string().optional(),
+  "customerId": zod.number().nullish(),
+  "purchaseNonTaxable": zod.boolean().optional(),
+  "salesNonTaxable": zod.boolean().optional()
 })
 
-export const UpdateProductResponse = zod.object({
-  "id": zod.number(),
-  "name": zod.string(),
-  "stock": zod.number(),
-  "sellingPrice": zod.number(),
-  "purchasePrice": zod.number(),
-  "createdAt": zod.string()
-})
+export const UpdateProductResponse = ListProductsResponseItem
 
 
 /**
