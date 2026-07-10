@@ -640,3 +640,284 @@ export const UpdateVendorResponse = zod.object({
 export const DeleteVendorParams = zod.object({
   "id": zod.coerce.number()
 })
+
+/**
+ * Documents — shared model for sales/purchase orders, invoices, and returns.
+ */
+export const DocType = zod.enum([
+  'sales_order',
+  'purchase_order',
+  'sales_invoice',
+  'purchase_invoice',
+  'sales_return',
+  'purchase_return',
+])
+
+export const DocumentItemInput = zod.object({
+  "name": zod.string().min(1),
+  "batch": zod.string().optional(),
+  "hsCode": zod.string().optional(),
+  "quantity": zod.number(),
+  "price": zod.number(),
+})
+
+export const DocumentItemResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "batch": zod.string(),
+  "hsCode": zod.string(),
+  "quantity": zod.number(),
+  "price": zod.number(),
+})
+
+const documentFields = {
+  "docType": DocType,
+  "sn": zod.string().optional(),
+  "docNo": zod.string().optional(),
+  "docDate": zod.string().min(1),
+  "dueDate": zod.string().optional(),
+  "supplyDate": zod.string().optional(),
+  "reference": zod.string().optional(),
+  "customerId": zod.number().nullish(),
+  "vendorId": zod.number().nullish(),
+  "taxPct": zod.number().optional(),
+  "discountPct": zod.number().optional(),
+  "advance": zod.number().optional(),
+  "remarks": zod.string().optional(),
+  "reason": zod.string().optional(),
+  "status": zod.string().optional(),
+  "linkedDocNo": zod.string().optional(),
+  "paymentSplit": zod.record(zod.string(), zod.number()).optional(),
+}
+
+/**
+ * @summary List all documents
+ */
+export const ListDocumentsQueryParams = zod.object({
+  "docType": DocType.optional(),
+})
+
+export const ListDocumentsResponseItem = zod.object({
+  "id": zod.number(),
+  ...documentFields,
+  "sn": zod.string(),
+  "docNo": zod.string(),
+  "reference": zod.string(),
+  "taxPct": zod.number(),
+  "discountPct": zod.number(),
+  "advance": zod.number(),
+  "remarks": zod.string(),
+  "status": zod.string(),
+  "items": zod.array(DocumentItemResponse),
+  "createdAt": zod.string(),
+})
+export const ListDocumentsResponse = zod.array(ListDocumentsResponseItem)
+
+/**
+ * @summary Create a new document
+ */
+export const CreateDocumentBody = zod.object({
+  ...documentFields,
+  "items": zod.array(DocumentItemInput).min(1),
+})
+
+/**
+ * @summary Get a document by ID
+ */
+export const GetDocumentParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetDocumentResponse = ListDocumentsResponseItem
+
+/**
+ * @summary Update a document
+ */
+export const UpdateDocumentParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateDocumentBody = zod.object({
+  ...documentFields,
+  "docType": DocType.optional(),
+  "docDate": zod.string().min(1).optional(),
+  "items": zod.array(DocumentItemInput).min(1).optional(),
+})
+
+export const UpdateDocumentResponse = ListDocumentsResponseItem
+
+/**
+ * @summary Delete a document
+ */
+export const DeleteDocumentParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+/**
+ * Payments — Payments In (from customers) and Payments Out (to vendors).
+ */
+export const PaymentDirection = zod.enum(['in', 'out'])
+
+/**
+ * @summary List all payments
+ */
+export const ListPaymentsQueryParams = zod.object({
+  "direction": PaymentDirection.optional(),
+})
+
+export const ListPaymentsResponseItem = zod.object({
+  "id": zod.number(),
+  "direction": PaymentDirection,
+  "receiptNo": zod.string(),
+  "date": zod.string(),
+  "customerId": zod.number().nullish(),
+  "vendorId": zod.number().nullish(),
+  "partyName": zod.string(),
+  "amount": zod.number(),
+  "method": zod.string(),
+  "remarks": zod.string(),
+  "createdAt": zod.string(),
+})
+export const ListPaymentsResponse = zod.array(ListPaymentsResponseItem)
+
+/**
+ * @summary Create a new payment
+ */
+export const CreatePaymentBody = zod.object({
+  "direction": PaymentDirection,
+  "receiptNo": zod.string().optional(),
+  "date": zod.string().min(1),
+  "customerId": zod.number().nullish(),
+  "vendorId": zod.number().nullish(),
+  "partyName": zod.string().min(1),
+  "amount": zod.number(),
+  "method": zod.string().optional(),
+  "remarks": zod.string().optional(),
+})
+
+/**
+ * @summary Get a payment by ID
+ */
+export const GetPaymentParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetPaymentResponse = ListPaymentsResponseItem
+
+/**
+ * @summary Update a payment
+ */
+export const UpdatePaymentParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdatePaymentBody = zod.object({
+  "receiptNo": zod.string().optional(),
+  "date": zod.string().optional(),
+  "customerId": zod.number().nullish(),
+  "vendorId": zod.number().nullish(),
+  "partyName": zod.string().optional(),
+  "amount": zod.number().optional(),
+  "method": zod.string().optional(),
+  "remarks": zod.string().optional(),
+})
+
+export const UpdatePaymentResponse = ListPaymentsResponseItem
+
+/**
+ * @summary Delete a payment
+ */
+export const DeletePaymentParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+/**
+ * Manufacture — production/batch records with consumed raw materials.
+ */
+export const ManufactureMaterialInput = zod.object({
+  "item": zod.string().min(1),
+  "batch": zod.string().optional(),
+  "quantity": zod.number(),
+  "cost": zod.number(),
+})
+
+export const ManufactureMaterialResponse = zod.object({
+  "id": zod.number(),
+  "item": zod.string(),
+  "batch": zod.string(),
+  "quantity": zod.number(),
+  "cost": zod.number(),
+})
+
+/**
+ * @summary List all manufacture records
+ */
+export const ListManufactureResponseItem = zod.object({
+  "id": zod.number(),
+  "product": zod.string(),
+  "batch": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "createdDate": zod.string(),
+  "expiryDate": zod.string().nullish(),
+  "laborCost": zod.number(),
+  "otherExpenses": zod.number(),
+  "note": zod.string(),
+  "materials": zod.array(ManufactureMaterialResponse),
+  "createdAt": zod.string(),
+})
+export const ListManufactureResponse = zod.array(ListManufactureResponseItem)
+
+/**
+ * @summary Create a new manufacture record
+ */
+export const CreateManufactureBody = zod.object({
+  "product": zod.string().min(1),
+  "batch": zod.string().optional(),
+  "quantity": zod.number(),
+  "unit": zod.string().optional(),
+  "createdDate": zod.string().min(1),
+  "expiryDate": zod.string().optional(),
+  "laborCost": zod.number().optional(),
+  "otherExpenses": zod.number().optional(),
+  "note": zod.string().optional(),
+  "materials": zod.array(ManufactureMaterialInput).optional(),
+})
+
+/**
+ * @summary Get a manufacture record by ID
+ */
+export const GetManufactureParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetManufactureResponse = ListManufactureResponseItem
+
+/**
+ * @summary Update a manufacture record
+ */
+export const UpdateManufactureParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateManufactureBody = zod.object({
+  "product": zod.string().min(1).optional(),
+  "batch": zod.string().optional(),
+  "quantity": zod.number().optional(),
+  "unit": zod.string().optional(),
+  "createdDate": zod.string().optional(),
+  "expiryDate": zod.string().optional(),
+  "laborCost": zod.number().optional(),
+  "otherExpenses": zod.number().optional(),
+  "note": zod.string().optional(),
+  "materials": zod.array(ManufactureMaterialInput).optional(),
+})
+
+export const UpdateManufactureResponse = ListManufactureResponseItem
+
+/**
+ * @summary Delete a manufacture record
+ */
+export const DeleteManufactureParams = zod.object({
+  "id": zod.coerce.number()
+})
