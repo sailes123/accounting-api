@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, transactionsTable, customersTable } from "../db";
+import { db, transactionsTable, partiesTable } from "../db";
 import { eq, desc, and } from "drizzle-orm";
 import {
   CreateTransactionBody,
@@ -54,13 +54,14 @@ router.get("/", async (req, res) => {
     let rows = await db
       .select({
         transaction: transactionsTable,
-        customerName: customersTable.name,
-        customerPhone: customersTable.phone,
+        customerName: partiesTable.name,
+        customerPhone: partiesTable.phone,
       })
       .from(transactionsTable)
-      .leftJoin(customersTable, and(
-        eq(transactionsTable.customerId, customersTable.id),
-        eq(customersTable.userId, userId)
+      .leftJoin(partiesTable, and(
+        eq(transactionsTable.customerId, partiesTable.id),
+        eq(partiesTable.userId, userId),
+        eq(partiesTable.partyType, "customer")
       ))
       .where(eq(transactionsTable.userId, userId))
       .orderBy(desc(transactionsTable.createdAt));
@@ -105,8 +106,8 @@ router.post("/", async (req, res) => {
     if (transaction.customerId) {
       const [c] = await db
         .select()
-        .from(customersTable)
-        .where(and(eq(customersTable.id, transaction.customerId), eq(customersTable.userId, userId)));
+        .from(partiesTable)
+        .where(and(eq(partiesTable.id, transaction.customerId), eq(partiesTable.userId, userId)));
       if (c) { customerName = c.name; customerPhone = c.phone; }
     }
     res.status(201).json(fmt(transaction, customerName, customerPhone));
@@ -127,13 +128,14 @@ router.get("/:id", async (req, res) => {
     const [row] = await db
       .select({
         transaction: transactionsTable,
-        customerName: customersTable.name,
-        customerPhone: customersTable.phone,
+        customerName: partiesTable.name,
+        customerPhone: partiesTable.phone,
       })
       .from(transactionsTable)
-      .leftJoin(customersTable, and(
-        eq(transactionsTable.customerId, customersTable.id),
-        eq(customersTable.userId, userId)
+      .leftJoin(partiesTable, and(
+        eq(transactionsTable.customerId, partiesTable.id),
+        eq(partiesTable.userId, userId),
+        eq(partiesTable.partyType, "customer")
       ))
       .where(and(eq(transactionsTable.id, parsed.data.id), eq(transactionsTable.userId, userId)));
     if (!row) {
@@ -181,8 +183,8 @@ router.patch("/:id", async (req, res) => {
     if (transaction.customerId) {
       const [c] = await db
         .select()
-        .from(customersTable)
-        .where(and(eq(customersTable.id, transaction.customerId), eq(customersTable.userId, userId)));
+        .from(partiesTable)
+        .where(and(eq(partiesTable.id, transaction.customerId), eq(partiesTable.userId, userId)));
       if (c) { customerName = c.name; customerPhone = c.phone; }
     }
     res.json(fmt(transaction, customerName, customerPhone));

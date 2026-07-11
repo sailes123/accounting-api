@@ -2,9 +2,16 @@ import { pgTable, text, serial, timestamp, numeric, integer } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-export const customersTable = pgTable("customers", {
+// A "party" is either a customer or a vendor. Both had identical shape
+// (name/email/phone/address/PAN/remarks/balance), so one table with a
+// partyType discriminant replaces the two near-duplicate tables — same
+// pattern used for the documents table (orders/invoices/returns).
+export const PARTY_TYPES = ["customer", "vendor"] as const;
+
+export const partiesTable = pgTable("parties", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
+  partyType: text("party_type", { enum: PARTY_TYPES }).notNull(),
   name: text("name").notNull(),
   email: text("email"),
   phone: text("phone").notNull(),
@@ -16,10 +23,10 @@ export const customersTable = pgTable("customers", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const insertCustomerSchema = createInsertSchema(customersTable).omit({
+export const insertPartySchema = createInsertSchema(partiesTable).omit({
   id: true,
   userId: true,
   createdAt: true,
 });
-export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
-export type Customer = typeof customersTable.$inferSelect;
+export type InsertParty = z.infer<typeof insertPartySchema>;
+export type Party = typeof partiesTable.$inferSelect;

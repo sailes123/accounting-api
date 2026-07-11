@@ -15,10 +15,28 @@ const router = Router();
 function fmt(p: typeof productsTable.$inferSelect) {
   return {
     id: p.id,
+    type: p.type,
     name: p.name,
-    stock: p.stock,
+    category: p.category,
+    subCategory: p.subCategory,
+    hsnCode: p.hsnCode,
+    sku: p.sku,
+    reorderPoint: p.reorderPoint === null ? null : Number(p.reorderPoint),
+    description: p.description,
+    unit: p.unit,
+    subUnit: p.subUnit,
+    unitConvFrom: p.unitConvFrom === null ? null : Number(p.unitConvFrom),
+    unitConvTo: p.unitConvTo === null ? null : Number(p.unitConvTo),
+    stock: Number(p.stock),
     sellingPrice: Number(p.sellingPrice),
     purchasePrice: Number(p.purchasePrice),
+    secondarySellingPrice: p.secondarySellingPrice === null ? null : Number(p.secondarySellingPrice),
+    size: p.size,
+    batch: p.batch,
+    expiryDate: p.expiryDate,
+    customerId: p.customerId,
+    purchaseNonTaxable: p.purchaseNonTaxable,
+    salesNonTaxable: p.salesNonTaxable,
     createdAt: p.createdAt.toISOString(),
   };
 }
@@ -45,11 +63,39 @@ router.post("/", async (req, res) => {
     res.status(400).json({ error: "Invalid request body" });
     return;
   }
-  const { name, stock, sellingPrice, purchasePrice } = parsed.data;
+  const {
+    type, name, category, subCategory, hsnCode, sku, reorderPoint, description,
+    unit, subUnit, unitConvFrom, unitConvTo, stock, sellingPrice, purchasePrice,
+    secondarySellingPrice, size, batch, expiryDate, customerId, purchaseNonTaxable, salesNonTaxable,
+  } = parsed.data;
   try {
     const [product] = await db
       .insert(productsTable)
-      .values({ userId, name, stock, sellingPrice: String(sellingPrice), purchasePrice: String(purchasePrice) })
+      .values({
+        userId,
+        type,
+        name,
+        category,
+        subCategory,
+        hsnCode,
+        sku,
+        reorderPoint: reorderPoint === undefined ? undefined : String(reorderPoint),
+        description,
+        unit,
+        subUnit,
+        unitConvFrom: unitConvFrom === undefined ? undefined : String(unitConvFrom),
+        unitConvTo: unitConvTo === undefined ? undefined : String(unitConvTo),
+        stock: String(stock),
+        sellingPrice: String(sellingPrice),
+        purchasePrice: String(purchasePrice),
+        secondarySellingPrice: secondarySellingPrice === undefined ? undefined : String(secondarySellingPrice),
+        size,
+        batch,
+        expiryDate,
+        customerId,
+        purchaseNonTaxable,
+        salesNonTaxable,
+      })
       .returning();
     res.status(201).json(fmt(product));
   } catch (err) {
@@ -94,10 +140,29 @@ router.patch("/:id", async (req, res) => {
     return;
   }
   const updates: Record<string, unknown> = {};
-  if (parsed.data.name !== undefined) updates.name = parsed.data.name;
-  if (parsed.data.stock !== undefined) updates.stock = parsed.data.stock;
-  if (parsed.data.sellingPrice !== undefined) updates.sellingPrice = String(parsed.data.sellingPrice);
-  if (parsed.data.purchasePrice !== undefined) updates.purchasePrice = String(parsed.data.purchasePrice);
+  const d = parsed.data;
+  if (d.type !== undefined) updates.type = d.type;
+  if (d.name !== undefined) updates.name = d.name;
+  if (d.category !== undefined) updates.category = d.category;
+  if (d.subCategory !== undefined) updates.subCategory = d.subCategory;
+  if (d.hsnCode !== undefined) updates.hsnCode = d.hsnCode;
+  if (d.sku !== undefined) updates.sku = d.sku;
+  if (d.reorderPoint !== undefined) updates.reorderPoint = String(d.reorderPoint);
+  if (d.description !== undefined) updates.description = d.description;
+  if (d.unit !== undefined) updates.unit = d.unit;
+  if (d.subUnit !== undefined) updates.subUnit = d.subUnit;
+  if (d.unitConvFrom !== undefined) updates.unitConvFrom = String(d.unitConvFrom);
+  if (d.unitConvTo !== undefined) updates.unitConvTo = String(d.unitConvTo);
+  if (d.stock !== undefined) updates.stock = String(d.stock);
+  if (d.sellingPrice !== undefined) updates.sellingPrice = String(d.sellingPrice);
+  if (d.purchasePrice !== undefined) updates.purchasePrice = String(d.purchasePrice);
+  if (d.secondarySellingPrice !== undefined) updates.secondarySellingPrice = String(d.secondarySellingPrice);
+  if (d.size !== undefined) updates.size = d.size;
+  if (d.batch !== undefined) updates.batch = d.batch;
+  if (d.expiryDate !== undefined) updates.expiryDate = d.expiryDate;
+  if (d.customerId !== undefined) updates.customerId = d.customerId;
+  if (d.purchaseNonTaxable !== undefined) updates.purchaseNonTaxable = d.purchaseNonTaxable;
+  if (d.salesNonTaxable !== undefined) updates.salesNonTaxable = d.salesNonTaxable;
   try {
     const [product] = await db
       .update(productsTable)
