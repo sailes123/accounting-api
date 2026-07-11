@@ -78,6 +78,27 @@
       "when": 1783688029844,
       "tag": "0010_handy_ultimates",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1783744748315,
+      "tag": "0011_closed_hairball",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1783744838074,
+      "tag": "0012_lean_harrier",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1783745462341,
+      "tag": "0013_jittery_blackheart",
+      "breakpoints": true
     }
   ]
 }

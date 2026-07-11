@@ -32,6 +32,7 @@ function fmt(p: typeof productsTable.$inferSelect) {
     purchasePrice: Number(p.purchasePrice),
     secondarySellingPrice: p.secondarySellingPrice === null ? null : Number(p.secondarySellingPrice),
     size: p.size,
+    batch: p.batch,
     expiryDate: p.expiryDate,
     customerId: p.customerId,
     purchaseNonTaxable: p.purchaseNonTaxable,
@@ -65,7 +66,7 @@ router.post("/", async (req, res) => {
   const {
     type, name, category, subCategory, hsnCode, sku, reorderPoint, description,
     unit, subUnit, unitConvFrom, unitConvTo, stock, sellingPrice, purchasePrice,
-    secondarySellingPrice, size, expiryDate, customerId, purchaseNonTaxable, salesNonTaxable,
+    secondarySellingPrice, size, batch, expiryDate, customerId, purchaseNonTaxable, salesNonTaxable,
   } = parsed.data;
   try {
     const [product] = await db
@@ -89,6 +90,7 @@ router.post("/", async (req, res) => {
         purchasePrice: String(purchasePrice),
         secondarySellingPrice: secondarySellingPrice === undefined ? undefined : String(secondarySellingPrice),
         size,
+        batch,
         expiryDate,
         customerId,
         purchaseNonTaxable,
@@ -156,6 +158,7 @@ router.patch("/:id", async (req, res) => {
   if (d.purchasePrice !== undefined) updates.purchasePrice = String(d.purchasePrice);
   if (d.secondarySellingPrice !== undefined) updates.secondarySellingPrice = String(d.secondarySellingPrice);
   if (d.size !== undefined) updates.size = d.size;
+  if (d.batch !== undefined) updates.batch = d.batch;
   if (d.expiryDate !== undefined) updates.expiryDate = d.expiryDate;
   if (d.customerId !== undefined) updates.customerId = d.customerId;
   if (d.purchaseNonTaxable !== undefined) updates.purchaseNonTaxable = d.purchaseNonTaxable;

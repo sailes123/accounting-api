@@ -18,12 +18,21 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * @summary List all customers
+ * Parties — a party is either a customer or a vendor (same shape, one table).
  */
 export const PanType = zod.enum(['PAN', 'VAT', 'NONE'])
+export const PartyType = zod.enum(['customer', 'vendor'])
 
-export const ListCustomersResponseItem = zod.object({
+/**
+ * @summary List all parties
+ */
+export const ListPartiesQueryParams = zod.object({
+  "type": PartyType.optional(),
+})
+
+export const ListPartiesResponseItem = zod.object({
   "id": zod.number(),
+  "partyType": PartyType,
   "name": zod.string(),
   "email": zod.string().nullish(),
   "phone": zod.string(),
@@ -34,16 +43,14 @@ export const ListCustomersResponseItem = zod.object({
   "balance": zod.number(),
   "createdAt": zod.string()
 })
-export const ListCustomersResponse = zod.array(ListCustomersResponseItem)
+export const ListPartiesResponse = zod.array(ListPartiesResponseItem)
 
 
 /**
- * @summary Create a new customer
+ * @summary Create a new party
  */
-
-
-
-export const CreateCustomerBody = zod.object({
+export const CreatePartyBody = zod.object({
+  "partyType": PartyType,
   "name": zod.string().min(1),
   "email": zod.email().optional(),
   "phone": zod.string(),
@@ -56,37 +63,23 @@ export const CreateCustomerBody = zod.object({
 
 
 /**
- * @summary Get a customer by ID
+ * @summary Get a party by ID
  */
-export const GetCustomerParams = zod.object({
+export const GetPartyParams = zod.object({
   "id": zod.coerce.number()
 })
 
-export const GetCustomerResponse = zod.object({
-  "id": zod.number(),
-  "name": zod.string(),
-  "email": zod.string().nullish(),
-  "phone": zod.string(),
-  "address": zod.string(),
-  "panType": PanType.nullish(),
-  "panNumber": zod.string().nullish(),
-  "remarks": zod.string().nullish(),
-  "balance": zod.number(),
-  "createdAt": zod.string()
-})
+export const GetPartyResponse = ListPartiesResponseItem
 
 
 /**
- * @summary Update a customer
+ * @summary Update a party
  */
-export const UpdateCustomerParams = zod.object({
+export const UpdatePartyParams = zod.object({
   "id": zod.coerce.number()
 })
 
-
-
-
-export const UpdateCustomerBody = zod.object({
+export const UpdatePartyBody = zod.object({
   "name": zod.string().min(1).optional(),
   "email": zod.email().optional(),
   "phone": zod.string().optional(),
@@ -97,24 +90,13 @@ export const UpdateCustomerBody = zod.object({
   "balance": zod.number().optional()
 })
 
-export const UpdateCustomerResponse = zod.object({
-  "id": zod.number(),
-  "name": zod.string(),
-  "email": zod.string().nullish(),
-  "phone": zod.string(),
-  "address": zod.string(),
-  "panType": PanType.nullish(),
-  "panNumber": zod.string().nullish(),
-  "remarks": zod.string().nullish(),
-  "balance": zod.number(),
-  "createdAt": zod.string()
-})
+export const UpdatePartyResponse = ListPartiesResponseItem
 
 
 /**
- * @summary Delete a customer
+ * @summary Delete a party
  */
-export const DeleteCustomerParams = zod.object({
+export const DeletePartyParams = zod.object({
   "id": zod.coerce.number()
 })
 
@@ -247,6 +229,7 @@ export const ListProductsResponseItem = zod.object({
   "purchasePrice": zod.number(),
   "secondarySellingPrice": zod.number().nullish(),
   "size": zod.string().nullish(),
+  "batch": zod.string().nullish(),
   "expiryDate": zod.string().nullish(),
   "customerId": zod.number().nullish(),
   "purchaseNonTaxable": zod.boolean(),
@@ -280,6 +263,7 @@ export const CreateProductBody = zod.object({
   "purchasePrice": zod.number(),
   "secondarySellingPrice": zod.number().optional(),
   "size": zod.string().optional(),
+  "batch": zod.string().optional(),
   "expiryDate": zod.string().optional(),
   "customerId": zod.number().nullish(),
   "purchaseNonTaxable": zod.boolean().optional(),
@@ -325,6 +309,7 @@ export const UpdateProductBody = zod.object({
   "purchasePrice": zod.number().optional(),
   "secondarySellingPrice": zod.number().optional(),
   "size": zod.string().optional(),
+  "batch": zod.string().optional(),
   "expiryDate": zod.string().optional(),
   "customerId": zod.number().nullish(),
   "purchaseNonTaxable": zod.boolean().optional(),
@@ -541,103 +526,6 @@ export const UpdateUnitResponse = zod.object({
  * @summary Delete a unit
  */
 export const DeleteUnitParams = zod.object({
-  "id": zod.coerce.number()
-})
-
-/**
- * @summary List all vendors
- */
-export const ListVendorsResponseItem = zod.object({
-  "id": zod.number(),
-  "name": zod.string(),
-  "email": zod.string().nullish(),
-  "phone": zod.string(),
-  "address": zod.string(),
-  "panType": PanType.nullish(),
-  "panNumber": zod.string().nullish(),
-  "remarks": zod.string().nullish(),
-  "balance": zod.number(),
-  "createdAt": zod.string()
-})
-export const ListVendorsResponse = zod.array(ListVendorsResponseItem)
-
-
-/**
- * @summary Create a new vendor
- */
-
-
-
-export const CreateVendorBody = zod.object({
-  "name": zod.string().min(1),
-  "email": zod.email().optional(),
-  "phone": zod.string(),
-  "address": zod.string(),
-  "panType": PanType.optional(),
-  "panNumber": zod.string().optional(),
-  "remarks": zod.string().optional(),
-  "balance": zod.number().optional(),
-})
-
-/**
- * @summary Get a vendor by ID
- */
-export const GetVendorParams = zod.object({
-  "id": zod.coerce.number()
-})
-
-export const GetVendorResponse = zod.object({
-  "id": zod.number(),
-  "name": zod.string(),
-  "email": zod.string().nullish(),
-  "phone": zod.string(),
-  "address": zod.string(),
-  "panType": PanType.nullish(),
-  "panNumber": zod.string().nullish(),
-  "remarks": zod.string().nullish(),
-  "balance": zod.number(),
-  "createdAt": zod.string()
-})
-
-
-/**
- * @summary Update a vendor
- */
-export const UpdateVendorParams = zod.object({
-  "id": zod.coerce.number()
-})
-
-
-
-export const UpdateVendorBody = zod.object({
-  "name": zod.string().min(1).optional(),
-  "email": zod.email().optional(),
-  "phone": zod.string().optional(),
-  "address": zod.string().optional(),
-  "panType": PanType.optional(),
-  "panNumber": zod.string().optional(),
-  "remarks": zod.string().optional(),
-  "balance": zod.number().optional()
-})
-
-export const UpdateVendorResponse = zod.object({
-  "id": zod.number(),
-  "name": zod.string(),
-  "email": zod.string().nullish(),
-  "phone": zod.string(),
-  "address": zod.string(),
-  "panType": PanType.nullish(),
-  "panNumber": zod.string().nullish(),
-  "remarks": zod.string().nullish(),
-  "balance": zod.number(),
-  "createdAt": zod.string()
-})
-
-
-/**
- * @summary Delete a vendor
- */
-export const DeleteVendorParams = zod.object({
   "id": zod.coerce.number()
 })
 

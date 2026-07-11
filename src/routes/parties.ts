@@ -1,98 +1,109 @@
 import { Router } from "express";
-import { db, customersTable } from "../db";
+import { db, partiesTable } from "../db";
 import { eq, desc, and } from "drizzle-orm";
 import {
-  CreateCustomerBody,
-  UpdateCustomerBody,
-  GetCustomerParams,
-  UpdateCustomerParams,
-  DeleteCustomerParams,
+  CreatePartyBody,
+  UpdatePartyBody,
+  GetPartyParams,
+  UpdatePartyParams,
+  DeletePartyParams,
+  ListPartiesQueryParams,
 } from "../lib/api";
 import type { AuthRequest } from "../middlewares/auth";
 
 const router = Router();
 
-function fmt(c: typeof customersTable.$inferSelect) {
+function fmt(p: typeof partiesTable.$inferSelect) {
   return {
-    id: c.id,
-    name: c.name,
-    email: c.email,
-    phone: c.phone,
-    address: c.address,
-    panType: c.panType,
-    panNumber: c.panNumber,
-    remarks: c.remarks,
-    balance: Number(c.balance),
-    createdAt: c.createdAt.toISOString(),
+    id: p.id,
+    partyType: p.partyType,
+    name: p.name,
+    email: p.email,
+    phone: p.phone,
+    address: p.address,
+    panType: p.panType,
+    panNumber: p.panNumber,
+    remarks: p.remarks,
+    balance: Number(p.balance),
+    createdAt: p.createdAt.toISOString(),
   };
 }
 
 router.get("/", async (req, res) => {
   const userId = (req as AuthRequest).userId!;
+  const queryParsed = ListPartiesQueryParams.safeParse(req.query);
+  if (!queryParsed.success) {
+    res.status(400).json({ error: "Invalid query params" });
+    return;
+  }
   try {
-    const customers = await db
+    const conditions = [eq(partiesTable.userId, userId)];
+    if (queryParsed.data.type) {
+      conditions.push(eq(partiesTable.partyType, queryParsed.data.type));
+    }
+    const parties = await db
       .select()
-      .from(customersTable)
-      .where(eq(customersTable.userId, userId))
-      .orderBy(desc(customersTable.createdAt));
-    res.json(customers.map(fmt));
+      .from(partiesTable)
+      .where(and(...conditions))
+      .orderBy(desc(partiesTable.createdAt));
+    res.json(parties.map(fmt));
   } catch (err) {
-    req.log.error({ err }, "Failed to list customers");
+    req.log.error({ err }, "Failed to list parties");
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
 router.post("/", async (req, res) => {
   const userId = (req as AuthRequest).userId!;
-  const parsed = CreateCustomerBody.safeParse(req.body);
+  const parsed = CreatePartyBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request body" });
     return;
   }
-  const { name, email, phone, address, panType, panNumber, remarks, balance } = parsed.data;
+  const { partyType, name, email, phone, address, panType, panNumber, remarks, balance } = parsed.data;
   try {
-    const [customer] = await db
-      .insert(customersTable)
-      .values({ userId, name, email, phone, address, panType, panNumber, remarks, balance: String(balance ?? 0) })
+    const [party] = await db
+      .insert(partiesTable)
+      .values({ userId, partyType, name, email, phone, address, panType, panNumber, remarks, balance: String(balance ?? 0) })
       .returning();
-    res.status(201).json(fmt(customer));
+    res.status(201).json(fmt(party));
   } catch (err) {
-    req.log.error({ err }, "Failed to create customer");
+    req.log.error({ err }, "Failed to create party");
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
 router.get("/:id", async (req, res) => {
   const userId = (req as AuthRequest).userId!;
-  const parsed = GetCustomerParams.safeParse({ id: Number(req.params.id) });
+  const parsed = GetPartyParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid id" });
     return;
   }
   try {
-    const [customer] = await db
+    const [party] = await db
       .select()
-      .from(customersTable)
-      .where(and(eq(customersTable.id, parsed.data.id), eq(customersTable.userId, userId)));
-    if (!customer) {
+      .from(partiesTable)
+      .where(and(eq(partiesTable.id, parsed.data.id), eq(partiesTable.userId, userId)));
+    if (!party) {
       res.status(404).json({ error: "Not found" });
       return;
     }
-    res.json(fmt(customer));
+    res.json(fmt(party));
   } catch (err) {
-    req.log.error({ err }, "Failed to get customer");
+    req.log.error({ err }, "Failed to get party");
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
 router.patch("/:id", async (req, res) => {
   const userId = (req as AuthRequest).userId!;
-  const idParsed = UpdateCustomerParams.safeParse({ id: Number(req.params.id) });
+  const idParsed = UpdatePartyParams.safeParse({ id: Number(req.params.id) });
   if (!idParsed.success) {
     res.status(400).json({ error: "Invalid id" });
     return;
   }
-  const parsed = UpdateCustomerBody.safeParse(req.body);
+  const parsed = UpdatePartyBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request body" });
     return;
@@ -107,36 +118,36 @@ router.patch("/:id", async (req, res) => {
   if (parsed.data.remarks !== undefined) updates.remarks = parsed.data.remarks;
   if (parsed.data.balance !== undefined) updates.balance = String(parsed.data.balance);
   try {
-    const [customer] = await db
-      .update(customersTable)
+    const [party] = await db
+      .update(partiesTable)
       .set(updates)
-      .where(and(eq(customersTable.id, idParsed.data.id), eq(customersTable.userId, userId)))
+      .where(and(eq(partiesTable.id, idParsed.data.id), eq(partiesTable.userId, userId)))
       .returning();
-    if (!customer) {
+    if (!party) {
       res.status(404).json({ error: "Not found" });
       return;
     }
-    res.json(fmt(customer));
+    res.json(fmt(party));
   } catch (err) {
-    req.log.error({ err }, "Failed to update customer");
+    req.log.error({ err }, "Failed to update party");
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
 router.delete("/:id", async (req, res) => {
   const userId = (req as AuthRequest).userId!;
-  const parsed = DeleteCustomerParams.safeParse({ id: Number(req.params.id) });
+  const parsed = DeletePartyParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid id" });
     return;
   }
   try {
     await db
-      .delete(customersTable)
-      .where(and(eq(customersTable.id, parsed.data.id), eq(customersTable.userId, userId)));
+      .delete(partiesTable)
+      .where(and(eq(partiesTable.id, parsed.data.id), eq(partiesTable.userId, userId)));
     res.status(204).send();
   } catch (err) {
-    req.log.error({ err }, "Failed to delete customer");
+    req.log.error({ err }, "Failed to delete party");
     res.status(500).json({ error: "Internal server error" });
   }
 });

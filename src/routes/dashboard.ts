@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, customersTable, transactionsTable } from "../db";
+import { db, partiesTable, transactionsTable } from "../db";
 import { eq, desc, sql, and } from "drizzle-orm";
 import type { AuthRequest } from "../middlewares/auth";
 
@@ -53,8 +53,8 @@ router.get("/summary", async (req, res) => {
 
     const [customerCount] = await db
       .select({ count: sql<string>`COUNT(*)` })
-      .from(customersTable)
-      .where(eq(customersTable.userId, userId));
+      .from(partiesTable)
+      .where(and(eq(partiesTable.userId, userId), eq(partiesTable.partyType, "customer")));
 
     res.json({
       todaySales: Number(todayResult?.total ?? 0),
@@ -78,13 +78,14 @@ router.get("/recent-transactions", async (req, res) => {
     const rows = await db
       .select({
         transaction: transactionsTable,
-        customerName: customersTable.name,
-        customerPhone: customersTable.phone,
+        customerName: partiesTable.name,
+        customerPhone: partiesTable.phone,
       })
       .from(transactionsTable)
-      .leftJoin(customersTable, and(
-        eq(transactionsTable.customerId, customersTable.id),
-        eq(customersTable.userId, userId)
+      .leftJoin(partiesTable, and(
+        eq(transactionsTable.customerId, partiesTable.id),
+        eq(partiesTable.userId, userId),
+        eq(partiesTable.partyType, "customer")
       ))
       .where(eq(transactionsTable.userId, userId))
       .orderBy(desc(transactionsTable.createdAt))
@@ -116,9 +117,9 @@ router.get("/top-customers", async (req, res) => {
   try {
     const customers = await db
       .select()
-      .from(customersTable)
-      .where(eq(customersTable.userId, userId))
-      .orderBy(desc(customersTable.balance))
+      .from(partiesTable)
+      .where(and(eq(partiesTable.userId, userId), eq(partiesTable.partyType, "customer")))
+      .orderBy(desc(partiesTable.balance))
       .limit(5);
 
     res.json(

@@ -22,6 +22,7 @@ export const productsTable = pgTable("products", {
   purchasePrice: numeric("purchase_price", { precision: 12, scale: 2 }).notNull(),
   secondarySellingPrice: numeric("secondary_selling_price", { precision: 12, scale: 2 }),
   size: text("size"),
+  batch: text("batch"),
   expiryDate: text("expiry_date"),
   customerId: integer("customer_id"),
   purchaseNonTaxable: boolean("purchase_non_taxable").notNull().default(false),
