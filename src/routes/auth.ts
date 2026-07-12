@@ -4,8 +4,10 @@ import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { z } from "zod/v4";
+import { authRateLimit } from "../middlewares/rateLimit";
 
 const router = Router();
+router.use(authRateLimit);
 
 const registerSchema = z.object({
   fullName: z.string().min(1),
