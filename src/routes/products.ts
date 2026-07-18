@@ -1,13 +1,15 @@
 import { Router } from "express";
 import { db, productsTable } from "../db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import {
   CreateProductBody,
   UpdateProductBody,
   GetProductParams,
   UpdateProductParams,
   DeleteProductParams,
+  ListProductsQueryParams,
 } from "../lib/api";
+import { resolvePagination, buildMeta } from "../lib/pagination";
 import type { AuthRequest } from "../middlewares/auth";
 
 const router = Router();
@@ -43,13 +45,28 @@ function fmt(p: typeof productsTable.$inferSelect) {
 
 router.get("/", async (req, res) => {
   const userId = (req as AuthRequest).userId!;
+  const parsed = ListProductsQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid query" });
+    return;
+  }
   try {
+    const { page, limit, offset } = resolvePagination(parsed.data.page, parsed.data.limit);
+
+    const [{ total }] = await db
+      .select({ total: sql<string>`count(*)` })
+      .from(productsTable)
+      .where(eq(productsTable.userId, userId));
+
     const products = await db
       .select()
       .from(productsTable)
       .where(eq(productsTable.userId, userId))
-      .orderBy(desc(productsTable.createdAt));
-    res.json(products.map(fmt));
+      .orderBy(desc(productsTable.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    res.json({ data: products.map(fmt), meta: buildMeta(page, limit, Number(total)) });
   } catch (err) {
     req.log.error({ err }, "Failed to list products");
     res.status(500).json({ error: "Internal server error" });

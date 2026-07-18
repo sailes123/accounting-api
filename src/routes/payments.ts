@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, paymentsTable } from "../db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import {
   CreatePaymentBody,
   UpdatePaymentBody,
@@ -9,6 +9,7 @@ import {
   DeletePaymentParams,
   ListPaymentsQueryParams,
 } from "../lib/api";
+import { resolvePagination, buildMeta } from "../lib/pagination";
 import type { AuthRequest } from "../middlewares/auth";
 
 const router = Router();
@@ -39,12 +40,23 @@ router.get("/", async (req, res) => {
   try {
     const conditions = [eq(paymentsTable.userId, userId)];
     if (parsed.data.direction) conditions.push(eq(paymentsTable.direction, parsed.data.direction));
+
+    const { page, limit, offset } = resolvePagination(parsed.data.page, parsed.data.limit);
+
+    const [{ total }] = await db
+      .select({ total: sql<string>`count(*)` })
+      .from(paymentsTable)
+      .where(and(...conditions));
+
     const payments = await db
       .select()
       .from(paymentsTable)
       .where(and(...conditions))
-      .orderBy(desc(paymentsTable.createdAt));
-    res.json(payments.map(fmt));
+      .orderBy(desc(paymentsTable.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    res.json({ data: payments.map(fmt), meta: buildMeta(page, limit, Number(total)) });
   } catch (err) {
     req.log.error({ err }, "Failed to list payments");
     res.status(500).json({ error: "Internal server error" });

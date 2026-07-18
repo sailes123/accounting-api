@@ -7,6 +7,22 @@
  */
 import * as zod from 'zod';
 
+export const PaginationQueryParams = zod.object({
+  "page": zod.coerce.number().int().min(1).optional(),
+  "limit": zod.coerce.number().int().min(1).max(100).optional(),
+})
+
+export const PaginationMeta = zod.object({
+  "page": zod.number(),
+  "limit": zod.number(),
+  "total": zod.number(),
+  "totalPages": zod.number(),
+})
+
+function paginated<T extends zod.ZodTypeAny>(item: T) {
+  return zod.object({ "data": zod.array(item), "meta": PaginationMeta })
+}
+
 
 /**
  * Returns server health status
@@ -210,6 +226,11 @@ export const DeleteTransactionParams = zod.object({
  */
 export const ProductType = zod.enum(['Goods', 'Services'])
 
+export const ListProductsQueryParams = zod.object({
+  "page": zod.coerce.number().int().min(1).optional(),
+  "limit": zod.coerce.number().int().min(1).max(100).optional(),
+})
+
 export const ListProductsResponseItem = zod.object({
   "id": zod.number(),
   "type": ProductType,
@@ -236,7 +257,7 @@ export const ListProductsResponseItem = zod.object({
   "salesNonTaxable": zod.boolean(),
   "createdAt": zod.string()
 })
-export const ListProductsResponse = zod.array(ListProductsResponseItem)
+export const ListProductsResponse = paginated(ListProductsResponseItem)
 
 
 /**
@@ -583,6 +604,8 @@ const documentFields = {
  */
 export const ListDocumentsQueryParams = zod.object({
   "docType": DocType.optional(),
+  "page": zod.coerce.number().int().min(1).optional(),
+  "limit": zod.coerce.number().int().min(1).max(100).optional(),
 })
 
 export const ListDocumentsResponseItem = zod.object({
@@ -599,7 +622,7 @@ export const ListDocumentsResponseItem = zod.object({
   "items": zod.array(DocumentItemResponse),
   "createdAt": zod.string(),
 })
-export const ListDocumentsResponse = zod.array(ListDocumentsResponseItem)
+export const ListDocumentsResponse = paginated(ListDocumentsResponseItem)
 
 /**
  * @summary Create a new document
@@ -651,6 +674,8 @@ export const PaymentDirection = zod.enum(['in', 'out'])
  */
 export const ListPaymentsQueryParams = zod.object({
   "direction": PaymentDirection.optional(),
+  "page": zod.coerce.number().int().min(1).optional(),
+  "limit": zod.coerce.number().int().min(1).max(100).optional(),
 })
 
 export const ListPaymentsResponseItem = zod.object({
@@ -666,7 +691,7 @@ export const ListPaymentsResponseItem = zod.object({
   "remarks": zod.string(),
   "createdAt": zod.string(),
 })
-export const ListPaymentsResponse = zod.array(ListPaymentsResponseItem)
+export const ListPaymentsResponse = paginated(ListPaymentsResponseItem)
 
 /**
  * @summary Create a new payment
@@ -740,6 +765,11 @@ export const ManufactureMaterialResponse = zod.object({
 /**
  * @summary List all manufacture records
  */
+export const ListManufactureQueryParams = zod.object({
+  "page": zod.coerce.number().int().min(1).optional(),
+  "limit": zod.coerce.number().int().min(1).max(100).optional(),
+})
+
 export const ListManufactureResponseItem = zod.object({
   "id": zod.number(),
   "product": zod.string(),
@@ -754,7 +784,7 @@ export const ListManufactureResponseItem = zod.object({
   "materials": zod.array(ManufactureMaterialResponse),
   "createdAt": zod.string(),
 })
-export const ListManufactureResponse = zod.array(ListManufactureResponseItem)
+export const ListManufactureResponse = paginated(ListManufactureResponseItem)
 
 /**
  * @summary Create a new manufacture record

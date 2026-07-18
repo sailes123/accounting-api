@@ -1,13 +1,15 @@
 import { Router } from "express";
 import { db, manufactureRecordsTable, manufactureMaterialsTable } from "../db";
-import { eq, desc, and, inArray } from "drizzle-orm";
+import { eq, desc, and, inArray, sql } from "drizzle-orm";
 import {
   CreateManufactureBody,
   UpdateManufactureBody,
   GetManufactureParams,
   UpdateManufactureParams,
   DeleteManufactureParams,
+  ListManufactureQueryParams,
 } from "../lib/api";
+import { resolvePagination, buildMeta } from "../lib/pagination";
 import type { AuthRequest } from "../middlewares/auth";
 
 const router = Router();
@@ -41,15 +43,29 @@ function fmt(r: typeof manufactureRecordsTable.$inferSelect, materials: (typeof 
 
 router.get("/", async (req, res) => {
   const userId = (req as AuthRequest).userId!;
+  const parsed = ListManufactureQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid query" });
+    return;
+  }
   try {
+    const { page, limit, offset } = resolvePagination(parsed.data.page, parsed.data.limit);
+
+    const [{ total }] = await db
+      .select({ total: sql<string>`count(*)` })
+      .from(manufactureRecordsTable)
+      .where(eq(manufactureRecordsTable.userId, userId));
+
     const records = await db
       .select()
       .from(manufactureRecordsTable)
       .where(eq(manufactureRecordsTable.userId, userId))
-      .orderBy(desc(manufactureRecordsTable.createdAt));
+      .orderBy(desc(manufactureRecordsTable.createdAt))
+      .limit(limit)
+      .offset(offset);
 
     if (records.length === 0) {
-      res.json([]);
+      res.json({ data: [], meta: buildMeta(page, limit, Number(total)) });
       return;
     }
 
@@ -65,7 +81,10 @@ router.get("/", async (req, res) => {
       materialsByRecord.set(m.recordId, list);
     }
 
-    res.json(records.map((r) => fmt(r, materialsByRecord.get(r.id) ?? [])));
+    res.json({
+      data: records.map((r) => fmt(r, materialsByRecord.get(r.id) ?? [])),
+      meta: buildMeta(page, limit, Number(total)),
+    });
   } catch (err) {
     req.log.error({ err }, "Failed to list manufacture records");
     res.status(500).json({ error: "Internal server error" });
