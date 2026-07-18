@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, documentsTable, documentItemsTable } from "../db";
-import { eq, desc, and, inArray } from "drizzle-orm";
+import { eq, desc, and, inArray, sql } from "drizzle-orm";
 import {
   CreateDocumentBody,
   UpdateDocumentBody,
@@ -9,6 +9,7 @@ import {
   DeleteDocumentParams,
   ListDocumentsQueryParams,
 } from "../lib/api";
+import { resolvePagination, buildMeta } from "../lib/pagination";
 import type { AuthRequest } from "../middlewares/auth";
 
 const router = Router();
@@ -60,14 +61,23 @@ router.get("/", async (req, res) => {
     const conditions = [eq(documentsTable.userId, userId)];
     if (parsed.data.docType) conditions.push(eq(documentsTable.docType, parsed.data.docType));
 
+    const { page, limit, offset } = resolvePagination(parsed.data.page, parsed.data.limit);
+
+    const [{ total }] = await db
+      .select({ total: sql<string>`count(*)` })
+      .from(documentsTable)
+      .where(and(...conditions));
+
     const docs = await db
       .select()
       .from(documentsTable)
       .where(and(...conditions))
-      .orderBy(desc(documentsTable.createdAt));
+      .orderBy(desc(documentsTable.createdAt))
+      .limit(limit)
+      .offset(offset);
 
     if (docs.length === 0) {
-      res.json([]);
+      res.json({ data: [], meta: buildMeta(page, limit, Number(total)) });
       return;
     }
 
@@ -83,7 +93,10 @@ router.get("/", async (req, res) => {
       itemsByDoc.set(item.documentId, list);
     }
 
-    res.json(docs.map((d) => fmt(d, itemsByDoc.get(d.id) ?? [])));
+    res.json({
+      data: docs.map((d) => fmt(d, itemsByDoc.get(d.id) ?? [])),
+      meta: buildMeta(page, limit, Number(total)),
+    });
   } catch (err) {
     req.log.error({ err }, "Failed to list documents");
     res.status(500).json({ error: "Internal server error" });
