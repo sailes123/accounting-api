@@ -13,11 +13,13 @@ if (!process.env.DATABASE_URL) {
 }
 
 const caPath = path.resolve(__dirname, "../../ca.pem");
-const ca = fs.existsSync(caPath) ? fs.readFileSync(caPath, "utf-8") : undefined;
+const ca = fs.existsSync(caPath)
+  ? fs.readFileSync(caPath, "utf-8")
+  : process.env.DATABASE_CA_CERT?.replace(/\\n/g, "\n");
 
 if (!ca) {
   throw new Error(
-    "backend/ca.pem is missing. The database connection requires the Aiven CA certificate to verify TLS.",
+    "Aiven CA certificate is missing. Provide it as backend/ca.pem (local dev) or via the DATABASE_CA_CERT environment variable (production, e.g. when deploying from a git checkout that doesn't include the gitignored ca.pem file).",
   );
 }
 
