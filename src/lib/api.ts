@@ -839,3 +839,27 @@ export const UpdateManufactureResponse = ListManufactureResponseItem
 export const DeleteManufactureParams = zod.object({
   "id": zod.coerce.number()
 })
+
+/**
+ * @summary Get the current user's company/shop settings
+ */
+export const GetCompanySettingsResponse = zod.object({
+  "shopName": zod.string(),
+  "phone": zod.string().nullable(),
+  "address": zod.string().nullable(),
+  "panNumber": zod.string().nullable(),
+  "logoUrl": zod.string().nullable(),
+  "updatedAt": zod.string(),
+})
+
+/**
+ * @summary Update the current user's company/shop settings (multipart/form-data; logo file optional)
+ */
+export const UpdateCompanySettingsBody = zod.object({
+  "shopName": zod.string().min(1).max(200).optional(),
+  "phone": zod.string().max(30).optional(),
+  "address": zod.string().max(500).optional(),
+  "panNumber": zod.string().max(50).optional(),
+})
+
+export const UpdateCompanySettingsResponse = GetCompanySettingsResponse
