@@ -334,7 +334,9 @@ away from raw `text` dates to a real `date`/`timestamp` column if range queries 
 ## 7. Explicitly Out of Scope for Now
 
 - Multi-user/org/team accounts, roles/permissions — single user per account throughout.
-- Refresh tokens, logout endpoint, password reset — not present in the frontend, don't add. 
+- Refresh tokens, logout endpoint — not present in the frontend, don't add. (Password reset *was*
+  added later: `PATCH /auth/password`, `POST /auth/forgot-password`, `POST /auth/reset-password` —
+  see `backend/src/routes/auth.ts`.)
 - Real file/object storage — local disk + multer is enough until deployment needs otherwise.
 - Fiscal year as a first-class entity — `company_settings.fiscal_year` (a string) is enough; the
   frontend's `FiscalYearContext` doesn't send it to the backend anywhere today.

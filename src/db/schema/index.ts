@@ -8,3 +8,4 @@ export * from "./payments";
 export * from "./manufacture";
 export * from "./party";
 export * from "./companySettings";
+export * from "./passwordResetTokens";
