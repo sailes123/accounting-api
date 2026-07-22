@@ -12,6 +12,7 @@ import documentsRouter from "./documents";
 import paymentsRouter from "./payments";
 import manufactureRouter from "./manufacture";
 import companySettingsRouter from "./companySettings";
+import notificationsRouter from "./notifications";
 import { requireAuth } from "../middlewares/auth";
 import { UPLOADS_ROOT } from "../lib/uploads";
 
@@ -39,5 +40,6 @@ router.use("/documents", requireAuth, documentsRouter);
 router.use("/payments", requireAuth, paymentsRouter);
 router.use("/manufacture", requireAuth, manufactureRouter);
 router.use("/company-settings", requireAuth, companySettingsRouter);
+router.use("/notifications", requireAuth, notificationsRouter);
 
 export default router;

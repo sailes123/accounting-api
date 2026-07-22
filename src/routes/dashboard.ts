@@ -10,11 +10,31 @@ function billNo(type: string, id: number) {
   return `${TYPE_PREFIX[type] ?? "TX"}${100 + id}`;
 }
 
+function trend(current: number, previous: number): { pct: number; up: boolean } {
+  if (previous === 0) {
+    return { pct: current === 0 ? 0 : 100, up: current >= previous };
+  }
+  return { pct: Math.round(Math.abs(((current - previous) / previous) * 100)), up: current >= previous };
+}
+
 router.get("/summary", async (req, res) => {
   const userId = (req as AuthRequest).userId!;
   try {
-    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
     const monthStart = today.slice(0, 7) + "-01";
+
+    const yesterdayDate = new Date(now);
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterday = yesterdayDate.toISOString().slice(0, 10);
+
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      .toISOString()
+      .slice(0, 10);
+    const daysInPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth() - 1, Math.min(now.getDate(), daysInPrevMonth))
+      .toISOString()
+      .slice(0, 10);
 
     const [todayResult] = await db
       .select({ total: sql<string>`COALESCE(SUM(amount::numeric), 0)` })
@@ -56,13 +76,52 @@ router.get("/summary", async (req, res) => {
       .from(partiesTable)
       .where(and(eq(partiesTable.userId, userId), eq(partiesTable.partyType, "customer")));
 
+    const [yesterdayIncomeResult] = await db
+      .select({ total: sql<string>`COALESCE(SUM(amount::numeric), 0)` })
+      .from(transactionsTable)
+      .where(sql`type = 'income' AND date = ${yesterday} AND user_id = ${userId}`);
+
+    const [prevMonthIncomeResult] = await db
+      .select({ total: sql<string>`COALESCE(SUM(amount::numeric), 0)` })
+      .from(transactionsTable)
+      .where(sql`type = 'income' AND date >= ${prevMonthStart} AND date <= ${prevMonthEnd} AND user_id = ${userId}`);
+
+    const [yesterdayExpenseResult] = await db
+      .select({ total: sql<string>`COALESCE(SUM(amount::numeric), 0)` })
+      .from(transactionsTable)
+      .where(sql`type = 'expense' AND date = ${yesterday} AND user_id = ${userId}`);
+
+    const [prevMonthExpenseResult] = await db
+      .select({ total: sql<string>`COALESCE(SUM(amount::numeric), 0)` })
+      .from(transactionsTable)
+      .where(sql`type = 'expense' AND date >= ${prevMonthStart} AND date <= ${prevMonthEnd} AND user_id = ${userId}`);
+
+    const todaySales = Number(todayResult?.total ?? 0);
+    const monthlySales = Number(monthResult?.total ?? 0);
+    const todayPurchase = Number(todayPurchaseResult?.total ?? 0);
+    const monthlyPurchase = Number(monthPurchaseResult?.total ?? 0);
+    const todayExpenses = Number(todayExpenseResult?.total ?? 0);
+    const monthlyExpenses = Number(monthExpenseResult?.total ?? 0);
+    const yesterdayIncome = Number(yesterdayIncomeResult?.total ?? 0);
+    const prevMonthIncome = Number(prevMonthIncomeResult?.total ?? 0);
+    const yesterdayExpense = Number(yesterdayExpenseResult?.total ?? 0);
+    const prevMonthExpense = Number(prevMonthExpenseResult?.total ?? 0);
+
     res.json({
-      todaySales: Number(todayResult?.total ?? 0),
-      monthlySales: Number(monthResult?.total ?? 0),
-      todayPurchase: Number(todayPurchaseResult?.total ?? 0),
-      monthlyPurchase: Number(monthPurchaseResult?.total ?? 0),
-      todayExpenses: Number(todayExpenseResult?.total ?? 0),
-      monthlyExpenses: Number(monthExpenseResult?.total ?? 0),
+      todaySales,
+      monthlySales,
+      todayPurchase,
+      monthlyPurchase,
+      todayExpenses,
+      monthlyExpenses,
+      trends: {
+        todaySales: trend(todaySales, yesterdayIncome),
+        monthlySales: trend(monthlySales, prevMonthIncome),
+        todayPurchase: trend(todayPurchase, yesterdayExpense),
+        monthlyPurchase: trend(monthlyPurchase, prevMonthExpense),
+        todayExpenses: trend(todayExpenses, yesterdayExpense),
+        monthlyExpenses: trend(monthlyExpenses, prevMonthExpense),
+      },
       totalUdharo: Number(udharoResult?.total ?? 0),
       totalCustomers: Number(customerCount?.count ?? 0),
     });

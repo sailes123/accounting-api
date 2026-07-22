@@ -9,3 +9,4 @@ export * from "./manufacture";
 export * from "./party";
 export * from "./companySettings";
 export * from "./passwordResetTokens";
+export * from "./notifications";
