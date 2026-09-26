@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, uniqueIndex, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -7,6 +7,11 @@ export const usersTable = pgTable("users", {
   fullName: text("full_name").notNull(),
   email: text("email").notNull(),
   password: text("password").notNull(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  verificationCodeHash: text("verification_code_hash"),
+  verificationCodeExpiresAt: timestamp("verification_code_expires_at", { withTimezone: true }),
+  passwordResetCodeHash: text("password_reset_code_hash"),
+  passwordResetCodeExpiresAt: timestamp("password_reset_code_expires_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   uniqueIndex("users_email_unique").on(table.email),
