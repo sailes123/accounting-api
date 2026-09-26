@@ -10,6 +10,7 @@ import unitsRouter from "./units";
 import documentsRouter from "./documents";
 import paymentsRouter from "./payments";
 import manufactureRouter from "./manufacture";
+import settingsRouter from "./settings";
 import { requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -25,5 +26,6 @@ router.use("/units", requireAuth, unitsRouter);
 router.use("/documents", requireAuth, documentsRouter);
 router.use("/payments", requireAuth, paymentsRouter);
 router.use("/manufacture", requireAuth, manufactureRouter);
+router.use("/settings", requireAuth, settingsRouter);
 
 export default router;
