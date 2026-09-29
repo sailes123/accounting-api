@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, productsTable } from "../db";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { db, productsTable, productStockActivitiesTable } from "../db";
+import { eq, desc, and, gte, sql } from "drizzle-orm";
 import {
   CreateProductBody,
   UpdateProductBody,
@@ -8,6 +8,8 @@ import {
   UpdateProductParams,
   DeleteProductParams,
   ListProductsQueryParams,
+  AddProductStockBody,
+  AdjustProductStockBody,
 } from "../lib/api";
 import { resolvePagination, buildMeta } from "../lib/pagination";
 import type { AuthRequest } from "../middlewares/auth";
@@ -40,6 +42,14 @@ function fmt(p: typeof productsTable.$inferSelect) {
     purchaseNonTaxable: p.purchaseNonTaxable,
     salesNonTaxable: p.salesNonTaxable,
     createdAt: p.createdAt.toISOString(),
+  };
+}
+
+function fmtActivity(a: typeof productStockActivitiesTable.$inferSelect) {
+  return {
+    id: a.id, type: a.type, change: Number(a.change), quantityAfter: Number(a.quantityAfter),
+    purchasePrice: a.purchasePrice === null ? null : Number(a.purchasePrice),
+    adjustedDate: a.adjustedDate, remarks: a.remarks, createdAt: a.createdAt.toISOString(),
   };
 }
 
@@ -142,6 +152,73 @@ router.get("/:id", async (req, res) => {
     req.log.error({ err }, "Failed to get product");
     res.status(500).json({ error: "Internal server error" });
   }
+});
+
+router.get("/:id/stock-activities", async (req, res) => {
+  const userId = (req as AuthRequest).userId!;
+  const parsed = GetProductParams.safeParse({ id: Number(req.params.id) });
+  if (!parsed.success) { res.status(400).json({ error: "Invalid id" }); return; }
+  try {
+    const activities = await db.select().from(productStockActivitiesTable)
+      .where(and(eq(productStockActivitiesTable.productId, parsed.data.id), eq(productStockActivitiesTable.userId, userId)))
+      .orderBy(desc(productStockActivitiesTable.createdAt));
+    res.json(activities.map(fmtActivity));
+  } catch (err) { req.log.error({ err }, "Failed to list product stock activities"); res.status(500).json({ error: "Internal server error" }); }
+});
+
+router.post("/:id/add-stock", async (req, res) => {
+  const userId = (req as AuthRequest).userId!;
+  const idParsed = GetProductParams.safeParse({ id: Number(req.params.id) });
+  const bodyParsed = AddProductStockBody.safeParse(req.body);
+  if (!idParsed.success || !bodyParsed.success) { res.status(400).json({ error: "Invalid request" }); return; }
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [product] = await tx.update(productsTable).set({ stock: sql`${productsTable.stock} + ${bodyParsed.data.quantity}` })
+        .where(and(eq(productsTable.id, idParsed.data.id), eq(productsTable.userId, userId))).returning();
+      if (!product) return null;
+      const [activity] = await tx.insert(productStockActivitiesTable).values({ productId: product.id, userId, type: "Add Stock", change: String(bodyParsed.data.quantity), quantityAfter: product.stock, remarks: bodyParsed.data.remarks?.trim() || null }).returning();
+      return { product, activity };
+    });
+    if (!result) { res.status(404).json({ error: "Not found" }); return; }
+    res.status(201).json({ product: fmt(result.product), activity: fmtActivity(result.activity) });
+  } catch (err) { req.log.error({ err }, "Failed to add product stock"); res.status(500).json({ error: "Internal server error" }); }
+});
+
+router.post("/:id/adjust-stock", async (req, res) => {
+  const userId = (req as AuthRequest).userId!;
+  const idParsed = GetProductParams.safeParse({ id: Number(req.params.id) });
+  const bodyParsed = AdjustProductStockBody.safeParse(req.body);
+  if (!idParsed.success || !bodyParsed.success) { res.status(400).json({ error: "Invalid request" }); return; }
+  const adjustment = bodyParsed.data;
+  const isReduction = adjustment.action === "Reduce Stock";
+  const change = isReduction ? -adjustment.quantity : adjustment.quantity;
+  try {
+    const result = await db.transaction(async (tx) => {
+      const conditions = [eq(productsTable.id, idParsed.data.id), eq(productsTable.userId, userId)];
+      if (isReduction) conditions.push(gte(productsTable.stock, String(adjustment.quantity)));
+      const [product] = await tx.update(productsTable)
+        .set({
+          stock: sql`${productsTable.stock} + ${change}`,
+          ...(!isReduction && adjustment.purchasePrice !== undefined ? { purchasePrice: String(adjustment.purchasePrice) } : {}),
+        })
+        .where(and(...conditions))
+        .returning();
+      if (!product) return null;
+      const [activity] = await tx.insert(productStockActivitiesTable).values({
+        productId: product.id, userId, type: adjustment.action, change: String(change),
+        quantityAfter: product.stock,
+        purchasePrice: !isReduction && adjustment.purchasePrice !== undefined ? String(adjustment.purchasePrice) : null,
+        adjustedDate: adjustment.adjustedDate?.trim() || null,
+        remarks: adjustment.remarks?.trim() || null,
+      }).returning();
+      return { product, activity };
+    });
+    if (!result) {
+      res.status(isReduction ? 400 : 404).json({ error: isReduction ? "Insufficient stock" : "Not found" });
+      return;
+    }
+    res.status(201).json({ product: fmt(result.product), activity: fmtActivity(result.activity) });
+  } catch (err) { req.log.error({ err }, "Failed to adjust product stock"); res.status(500).json({ error: "Internal server error" }); }
 });
 
 router.patch("/:id", async (req, res) => {

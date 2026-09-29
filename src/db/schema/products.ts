@@ -30,6 +30,19 @@ export const productsTable = pgTable("products", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const productStockActivitiesTable = pgTable("product_stock_activities", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id").notNull().references(() => productsTable.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull(),
+  type: text("type").notNull().default("Add Stock"),
+  change: numeric("change", { precision: 12, scale: 2 }).notNull(),
+  quantityAfter: numeric("quantity_after", { precision: 12, scale: 2 }).notNull(),
+  purchasePrice: numeric("purchase_price", { precision: 12, scale: 2 }),
+  adjustedDate: text("adjusted_date"),
+  remarks: text("remarks"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const insertProductSchema = createInsertSchema(productsTable).omit({ id: true, userId: true, createdAt: true });
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof productsTable.$inferSelect;

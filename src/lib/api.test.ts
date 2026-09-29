@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { CreatePartyBody, ListPartiesQueryParams, CreateProductBody } from "./api";
+import { AdjustProductStockBody, CreatePartyBody, ListPartiesQueryParams, CreateProductBody } from "./api";
 
 describe("CreatePartyBody", () => {
   it("accepts a minimal valid customer", () => {
@@ -99,5 +99,23 @@ describe("CreateProductBody", () => {
 
   it("rejects an empty name", () => {
     expect(CreateProductBody.safeParse({ ...base, name: "" }).success).toBe(false);
+  });
+});
+
+describe("AdjustProductStockBody", () => {
+  it("accepts a stock addition with all adjustment details", () => {
+    expect(AdjustProductStockBody.safeParse({
+      action: "Add Stock", quantity: 10, purchasePrice: 90,
+      adjustedDate: "2026-09-29", remarks: "New delivery",
+    }).success).toBe(true);
+  });
+
+  it("accepts a stock reduction", () => {
+    expect(AdjustProductStockBody.safeParse({ action: "Reduce Stock", quantity: 2 }).success).toBe(true);
+  });
+
+  it("rejects a zero or negative quantity", () => {
+    expect(AdjustProductStockBody.safeParse({ action: "Reduce Stock", quantity: 0 }).success).toBe(false);
+    expect(AdjustProductStockBody.safeParse({ action: "Add Stock", quantity: -1 }).success).toBe(false);
   });
 });

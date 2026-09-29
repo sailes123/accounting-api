@@ -120,6 +120,20 @@
       "when": 1790441752473,
       "tag": "0016_company_fiscal_years",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790582400000,
+      "tag": "0017_product_stock_activities",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790672400000,
+      "tag": "0018_stock_activity_details",
+      "breakpoints": true
     }
   ]
 }

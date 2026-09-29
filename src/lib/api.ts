@@ -301,6 +301,23 @@ export const GetProductParams = zod.object({
 
 export const GetProductResponse = ListProductsResponseItem
 
+export const ListProductStockActivitiesResponseItem = zod.object({
+  "id": zod.number(), "type": zod.string(), "change": zod.number(),
+  "quantityAfter": zod.number(), "purchasePrice": zod.number().nullish(),
+  "adjustedDate": zod.string().nullish(), "remarks": zod.string().nullish(), "createdAt": zod.string(),
+})
+export const ListProductStockActivitiesResponse = zod.array(ListProductStockActivitiesResponseItem)
+export const AddProductStockBody = zod.object({
+  "quantity": zod.number().positive(), "remarks": zod.string().max(500).optional(),
+})
+export const AdjustProductStockBody = zod.object({
+  "action": zod.enum(["Add Stock", "Reduce Stock"]),
+  "quantity": zod.number().positive(),
+  "purchasePrice": zod.number().nonnegative().optional(),
+  "adjustedDate": zod.string().max(32).optional(),
+  "remarks": zod.string().max(500).optional(),
+})
+
 
 /**
  * @summary Update a product
