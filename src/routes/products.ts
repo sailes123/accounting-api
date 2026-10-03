@@ -1,6 +1,17 @@
 import { Router } from "express";
 import { db, productsTable, productStockActivitiesTable } from "../db";
-import { eq, desc, asc, and, gte, ilike, inArray, or, sql } from "drizzle-orm";
+import {
+  eq,
+  ne,
+  desc,
+  asc,
+  and,
+  gte,
+  ilike,
+  inArray,
+  or,
+  sql,
+} from "drizzle-orm";
 import {
   CreateProductBody,
   UpdateProductBody,
@@ -58,6 +69,24 @@ function fmtActivity(a: typeof productStockActivitiesTable.$inferSelect) {
     remarks: a.remarks,
     createdAt: a.createdAt.toISOString(),
   };
+}
+
+async function productNameExists(
+  userId: number,
+  name: string,
+  excludeId?: number,
+) {
+  const conditions = [
+    eq(productsTable.userId, userId),
+    sql`lower(${productsTable.name}) = lower(${name.trim()})`,
+  ];
+  if (excludeId !== undefined) conditions.push(ne(productsTable.id, excludeId));
+  const [match] = await db
+    .select({ id: productsTable.id })
+    .from(productsTable)
+    .where(and(...conditions))
+    .limit(1);
+  return Boolean(match);
 }
 
 router.get("/", async (req, res) => {
@@ -128,6 +157,12 @@ router.post("/", async (req, res) => {
     salesNonTaxable,
   } = parsed.data;
   try {
+    if (await productNameExists(userId, name)) {
+      res
+        .status(409)
+        .json({ error: "A product with this name already exists" });
+      return;
+    }
     const [product] = await db
       .insert(productsTable)
       .values({
@@ -380,6 +415,13 @@ router.patch("/:id", async (req, res) => {
   }
   const updates: Record<string, unknown> = {};
   const d = parsed.data;
+  if (
+    d.name !== undefined &&
+    (await productNameExists(userId, d.name, idParsed.data.id))
+  ) {
+    res.status(409).json({ error: "A product with this name already exists" });
+    return;
+  }
   if (d.type !== undefined) updates.type = d.type;
   if (d.name !== undefined) updates.name = d.name;
   if (d.category !== undefined) updates.category = d.category;

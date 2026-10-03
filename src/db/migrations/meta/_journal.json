@@ -134,6 +134,13 @@
       "when": 1790672400000,
       "tag": "0018_stock_activity_details",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790758800000,
+      "tag": "0019_products_user_name_unique",
+      "breakpoints": true
     }
   ]
 }
