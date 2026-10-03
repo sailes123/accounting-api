@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, productsTable, productStockActivitiesTable } from "../db";
-import { eq, desc, and, gte, sql } from "drizzle-orm";
+import { eq, desc, asc, and, gte, ilike, inArray, or, sql } from "drizzle-orm";
 import {
   CreateProductBody,
   UpdateProductBody,
@@ -10,6 +10,7 @@ import {
   ListProductsQueryParams,
   AddProductStockBody,
   AdjustProductStockBody,
+  ListProductStockActivitiesQueryParams,
 } from "../lib/api";
 import { resolvePagination, buildMeta } from "../lib/pagination";
 import type { AuthRequest } from "../middlewares/auth";
@@ -34,7 +35,8 @@ function fmt(p: typeof productsTable.$inferSelect) {
     stock: Number(p.stock),
     sellingPrice: Number(p.sellingPrice),
     purchasePrice: Number(p.purchasePrice),
-    secondarySellingPrice: p.secondarySellingPrice === null ? null : Number(p.secondarySellingPrice),
+    secondarySellingPrice:
+      p.secondarySellingPrice === null ? null : Number(p.secondarySellingPrice),
     size: p.size,
     batch: p.batch,
     expiryDate: p.expiryDate,
@@ -47,9 +49,14 @@ function fmt(p: typeof productsTable.$inferSelect) {
 
 function fmtActivity(a: typeof productStockActivitiesTable.$inferSelect) {
   return {
-    id: a.id, type: a.type, change: Number(a.change), quantityAfter: Number(a.quantityAfter),
+    id: a.id,
+    type: a.type,
+    change: Number(a.change),
+    quantityAfter: Number(a.quantityAfter),
     purchasePrice: a.purchasePrice === null ? null : Number(a.purchasePrice),
-    adjustedDate: a.adjustedDate, remarks: a.remarks, createdAt: a.createdAt.toISOString(),
+    adjustedDate: a.adjustedDate,
+    remarks: a.remarks,
+    createdAt: a.createdAt.toISOString(),
   };
 }
 
@@ -61,7 +68,10 @@ router.get("/", async (req, res) => {
     return;
   }
   try {
-    const { page, limit, offset } = resolvePagination(parsed.data.page, parsed.data.limit);
+    const { page, limit, offset } = resolvePagination(
+      parsed.data.page,
+      parsed.data.limit,
+    );
 
     const [{ total }] = await db
       .select({ total: sql<string>`count(*)` })
@@ -76,7 +86,10 @@ router.get("/", async (req, res) => {
       .limit(limit)
       .offset(offset);
 
-    res.json({ data: products.map(fmt), meta: buildMeta(page, limit, Number(total)) });
+    res.json({
+      data: products.map(fmt),
+      meta: buildMeta(page, limit, Number(total)),
+    });
   } catch (err) {
     req.log.error({ err }, "Failed to list products");
     res.status(500).json({ error: "Internal server error" });
@@ -91,9 +104,28 @@ router.post("/", async (req, res) => {
     return;
   }
   const {
-    type, name, category, subCategory, hsnCode, sku, reorderPoint, description,
-    unit, subUnit, unitConvFrom, unitConvTo, stock, sellingPrice, purchasePrice,
-    secondarySellingPrice, size, batch, expiryDate, customerId, purchaseNonTaxable, salesNonTaxable,
+    type,
+    name,
+    category,
+    subCategory,
+    hsnCode,
+    sku,
+    reorderPoint,
+    description,
+    unit,
+    subUnit,
+    unitConvFrom,
+    unitConvTo,
+    stock,
+    sellingPrice,
+    purchasePrice,
+    secondarySellingPrice,
+    size,
+    batch,
+    expiryDate,
+    customerId,
+    purchaseNonTaxable,
+    salesNonTaxable,
   } = parsed.data;
   try {
     const [product] = await db
@@ -106,16 +138,21 @@ router.post("/", async (req, res) => {
         subCategory,
         hsnCode,
         sku,
-        reorderPoint: reorderPoint === undefined ? undefined : String(reorderPoint),
+        reorderPoint:
+          reorderPoint === undefined ? undefined : String(reorderPoint),
         description,
         unit,
         subUnit,
-        unitConvFrom: unitConvFrom === undefined ? undefined : String(unitConvFrom),
+        unitConvFrom:
+          unitConvFrom === undefined ? undefined : String(unitConvFrom),
         unitConvTo: unitConvTo === undefined ? undefined : String(unitConvTo),
         stock: String(stock),
         sellingPrice: String(sellingPrice),
         purchasePrice: String(purchasePrice),
-        secondarySellingPrice: secondarySellingPrice === undefined ? undefined : String(secondarySellingPrice),
+        secondarySellingPrice:
+          secondarySellingPrice === undefined
+            ? undefined
+            : String(secondarySellingPrice),
         size,
         batch,
         expiryDate,
@@ -142,7 +179,12 @@ router.get("/:id", async (req, res) => {
     const [product] = await db
       .select()
       .from(productsTable)
-      .where(and(eq(productsTable.id, parsed.data.id), eq(productsTable.userId, userId)));
+      .where(
+        and(
+          eq(productsTable.id, parsed.data.id),
+          eq(productsTable.userId, userId),
+        ),
+      );
     if (!product) {
       res.status(404).json({ error: "Not found" });
       return;
@@ -157,68 +199,171 @@ router.get("/:id", async (req, res) => {
 router.get("/:id/stock-activities", async (req, res) => {
   const userId = (req as AuthRequest).userId!;
   const parsed = GetProductParams.safeParse({ id: Number(req.params.id) });
-  if (!parsed.success) { res.status(400).json({ error: "Invalid id" }); return; }
+  const query = ListProductStockActivitiesQueryParams.safeParse(req.query);
+  if (!parsed.success || !query.success) {
+    res.status(400).json({ error: "Invalid request" });
+    return;
+  }
   try {
-    const activities = await db.select().from(productStockActivitiesTable)
-      .where(and(eq(productStockActivitiesTable.productId, parsed.data.id), eq(productStockActivitiesTable.userId, userId)))
-      .orderBy(desc(productStockActivitiesTable.createdAt));
+    const filterTypes: Record<
+      Exclude<typeof query.data.filter, undefined | "all">,
+      string[]
+    > = {
+      sales: ["Sale", "Sales", "Sales Invoice"],
+      purchase: ["Purchase", "Purchase Invoice"],
+      "added-stock": ["Add Stock", "Added Stock"],
+      "reduced-stock": ["Reduce Stock", "Reduced Stock"],
+      "sales-return": ["Sales Return"],
+      "purchase-return": ["Purchase Return"],
+      quotation: ["Quotation"],
+    };
+    const conditions = [
+      eq(productStockActivitiesTable.productId, parsed.data.id),
+      eq(productStockActivitiesTable.userId, userId),
+    ];
+    const filter = query.data.filter;
+    if (filter && filter !== "all")
+      conditions.push(
+        inArray(productStockActivitiesTable.type, filterTypes[filter]),
+      );
+    if (query.data.search) {
+      const term = `%${query.data.search}%`;
+      conditions.push(
+        or(
+          ilike(productStockActivitiesTable.type, term),
+          ilike(productStockActivitiesTable.remarks, term),
+          ilike(productStockActivitiesTable.adjustedDate, term),
+        )!,
+      );
+    }
+    const activities = await db
+      .select()
+      .from(productStockActivitiesTable)
+      .where(and(...conditions))
+      .orderBy(
+        query.data.sort === "oldest"
+          ? asc(productStockActivitiesTable.createdAt)
+          : desc(productStockActivitiesTable.createdAt),
+      );
     res.json(activities.map(fmtActivity));
-  } catch (err) { req.log.error({ err }, "Failed to list product stock activities"); res.status(500).json({ error: "Internal server error" }); }
+  } catch (err) {
+    req.log.error({ err }, "Failed to list product stock activities");
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 router.post("/:id/add-stock", async (req, res) => {
   const userId = (req as AuthRequest).userId!;
   const idParsed = GetProductParams.safeParse({ id: Number(req.params.id) });
   const bodyParsed = AddProductStockBody.safeParse(req.body);
-  if (!idParsed.success || !bodyParsed.success) { res.status(400).json({ error: "Invalid request" }); return; }
+  if (!idParsed.success || !bodyParsed.success) {
+    res.status(400).json({ error: "Invalid request" });
+    return;
+  }
   try {
     const result = await db.transaction(async (tx) => {
-      const [product] = await tx.update(productsTable).set({ stock: sql`${productsTable.stock} + ${bodyParsed.data.quantity}` })
-        .where(and(eq(productsTable.id, idParsed.data.id), eq(productsTable.userId, userId))).returning();
+      const [product] = await tx
+        .update(productsTable)
+        .set({
+          stock: sql`${productsTable.stock} + ${bodyParsed.data.quantity}`,
+        })
+        .where(
+          and(
+            eq(productsTable.id, idParsed.data.id),
+            eq(productsTable.userId, userId),
+          ),
+        )
+        .returning();
       if (!product) return null;
-      const [activity] = await tx.insert(productStockActivitiesTable).values({ productId: product.id, userId, type: "Add Stock", change: String(bodyParsed.data.quantity), quantityAfter: product.stock, remarks: bodyParsed.data.remarks?.trim() || null }).returning();
+      const [activity] = await tx
+        .insert(productStockActivitiesTable)
+        .values({
+          productId: product.id,
+          userId,
+          type: "Add Stock",
+          change: String(bodyParsed.data.quantity),
+          quantityAfter: product.stock,
+          remarks: bodyParsed.data.remarks?.trim() || null,
+        })
+        .returning();
       return { product, activity };
     });
-    if (!result) { res.status(404).json({ error: "Not found" }); return; }
-    res.status(201).json({ product: fmt(result.product), activity: fmtActivity(result.activity) });
-  } catch (err) { req.log.error({ err }, "Failed to add product stock"); res.status(500).json({ error: "Internal server error" }); }
+    if (!result) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    res.status(201).json({
+      product: fmt(result.product),
+      activity: fmtActivity(result.activity),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to add product stock");
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 router.post("/:id/adjust-stock", async (req, res) => {
   const userId = (req as AuthRequest).userId!;
   const idParsed = GetProductParams.safeParse({ id: Number(req.params.id) });
   const bodyParsed = AdjustProductStockBody.safeParse(req.body);
-  if (!idParsed.success || !bodyParsed.success) { res.status(400).json({ error: "Invalid request" }); return; }
+  if (!idParsed.success || !bodyParsed.success) {
+    res.status(400).json({ error: "Invalid request" });
+    return;
+  }
   const adjustment = bodyParsed.data;
   const isReduction = adjustment.action === "Reduce Stock";
   const change = isReduction ? -adjustment.quantity : adjustment.quantity;
   try {
     const result = await db.transaction(async (tx) => {
-      const conditions = [eq(productsTable.id, idParsed.data.id), eq(productsTable.userId, userId)];
-      if (isReduction) conditions.push(gte(productsTable.stock, String(adjustment.quantity)));
-      const [product] = await tx.update(productsTable)
+      const conditions = [
+        eq(productsTable.id, idParsed.data.id),
+        eq(productsTable.userId, userId),
+      ];
+      if (isReduction)
+        conditions.push(gte(productsTable.stock, String(adjustment.quantity)));
+      const [product] = await tx
+        .update(productsTable)
         .set({
           stock: sql`${productsTable.stock} + ${change}`,
-          ...(!isReduction && adjustment.purchasePrice !== undefined ? { purchasePrice: String(adjustment.purchasePrice) } : {}),
+          ...(!isReduction && adjustment.purchasePrice !== undefined
+            ? { purchasePrice: String(adjustment.purchasePrice) }
+            : {}),
         })
         .where(and(...conditions))
         .returning();
       if (!product) return null;
-      const [activity] = await tx.insert(productStockActivitiesTable).values({
-        productId: product.id, userId, type: adjustment.action, change: String(change),
-        quantityAfter: product.stock,
-        purchasePrice: !isReduction && adjustment.purchasePrice !== undefined ? String(adjustment.purchasePrice) : null,
-        adjustedDate: adjustment.adjustedDate?.trim() || null,
-        remarks: adjustment.remarks?.trim() || null,
-      }).returning();
+      const [activity] = await tx
+        .insert(productStockActivitiesTable)
+        .values({
+          productId: product.id,
+          userId,
+          type: adjustment.action,
+          change: String(change),
+          quantityAfter: product.stock,
+          purchasePrice:
+            !isReduction && adjustment.purchasePrice !== undefined
+              ? String(adjustment.purchasePrice)
+              : null,
+          adjustedDate: adjustment.adjustedDate?.trim() || null,
+          remarks: adjustment.remarks?.trim() || null,
+        })
+        .returning();
       return { product, activity };
     });
     if (!result) {
-      res.status(isReduction ? 400 : 404).json({ error: isReduction ? "Insufficient stock" : "Not found" });
+      res
+        .status(isReduction ? 400 : 404)
+        .json({ error: isReduction ? "Insufficient stock" : "Not found" });
       return;
     }
-    res.status(201).json({ product: fmt(result.product), activity: fmtActivity(result.activity) });
-  } catch (err) { req.log.error({ err }, "Failed to adjust product stock"); res.status(500).json({ error: "Internal server error" }); }
+    res.status(201).json({
+      product: fmt(result.product),
+      activity: fmtActivity(result.activity),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to adjust product stock");
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 router.patch("/:id", async (req, res) => {
@@ -241,27 +386,39 @@ router.patch("/:id", async (req, res) => {
   if (d.subCategory !== undefined) updates.subCategory = d.subCategory;
   if (d.hsnCode !== undefined) updates.hsnCode = d.hsnCode;
   if (d.sku !== undefined) updates.sku = d.sku;
-  if (d.reorderPoint !== undefined) updates.reorderPoint = String(d.reorderPoint);
+  if (d.reorderPoint !== undefined)
+    updates.reorderPoint = String(d.reorderPoint);
   if (d.description !== undefined) updates.description = d.description;
   if (d.unit !== undefined) updates.unit = d.unit;
   if (d.subUnit !== undefined) updates.subUnit = d.subUnit;
-  if (d.unitConvFrom !== undefined) updates.unitConvFrom = String(d.unitConvFrom);
+  if (d.unitConvFrom !== undefined)
+    updates.unitConvFrom = String(d.unitConvFrom);
   if (d.unitConvTo !== undefined) updates.unitConvTo = String(d.unitConvTo);
   if (d.stock !== undefined) updates.stock = String(d.stock);
-  if (d.sellingPrice !== undefined) updates.sellingPrice = String(d.sellingPrice);
-  if (d.purchasePrice !== undefined) updates.purchasePrice = String(d.purchasePrice);
-  if (d.secondarySellingPrice !== undefined) updates.secondarySellingPrice = String(d.secondarySellingPrice);
+  if (d.sellingPrice !== undefined)
+    updates.sellingPrice = String(d.sellingPrice);
+  if (d.purchasePrice !== undefined)
+    updates.purchasePrice = String(d.purchasePrice);
+  if (d.secondarySellingPrice !== undefined)
+    updates.secondarySellingPrice = String(d.secondarySellingPrice);
   if (d.size !== undefined) updates.size = d.size;
   if (d.batch !== undefined) updates.batch = d.batch;
   if (d.expiryDate !== undefined) updates.expiryDate = d.expiryDate;
   if (d.customerId !== undefined) updates.customerId = d.customerId;
-  if (d.purchaseNonTaxable !== undefined) updates.purchaseNonTaxable = d.purchaseNonTaxable;
-  if (d.salesNonTaxable !== undefined) updates.salesNonTaxable = d.salesNonTaxable;
+  if (d.purchaseNonTaxable !== undefined)
+    updates.purchaseNonTaxable = d.purchaseNonTaxable;
+  if (d.salesNonTaxable !== undefined)
+    updates.salesNonTaxable = d.salesNonTaxable;
   try {
     const [product] = await db
       .update(productsTable)
       .set(updates)
-      .where(and(eq(productsTable.id, idParsed.data.id), eq(productsTable.userId, userId)))
+      .where(
+        and(
+          eq(productsTable.id, idParsed.data.id),
+          eq(productsTable.userId, userId),
+        ),
+      )
       .returning();
     if (!product) {
       res.status(404).json({ error: "Not found" });
@@ -284,7 +441,12 @@ router.delete("/:id", async (req, res) => {
   try {
     await db
       .delete(productsTable)
-      .where(and(eq(productsTable.id, parsed.data.id), eq(productsTable.userId, userId)));
+      .where(
+        and(
+          eq(productsTable.id, parsed.data.id),
+          eq(productsTable.userId, userId),
+        ),
+      );
     res.status(204).send();
   } catch (err) {
     req.log.error({ err }, "Failed to delete product");
