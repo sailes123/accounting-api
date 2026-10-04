@@ -141,6 +141,13 @@
       "when": 1790758800000,
       "tag": "0019_products_user_name_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791132390252,
+      "tag": "0020_nifty_nekra",
+      "breakpoints": true
     }
   ]
 }
