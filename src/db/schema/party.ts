@@ -6,7 +6,7 @@ import { z } from "zod/v4";
 // (name/email/phone/address/PAN/remarks/balance), so one table with a
 // partyType discriminant replaces the two near-duplicate tables — same
 // pattern used for the documents table (orders/invoices/returns).
-export const PARTY_TYPES = ["customer", "vendor"] as const;
+export const PARTY_TYPES = ["customer", "vendor", "both"] as const;
 
 export const partiesTable = pgTable("parties", {
   id: serial("id").primaryKey(),

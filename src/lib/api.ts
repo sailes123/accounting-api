@@ -35,7 +35,7 @@ export const HealthCheckResponse = zod.object({
  * Parties — a party is either a customer or a vendor (same shape, one table).
  */
 export const PanType = zod.enum(["PAN", "VAT", "NONE"]);
-export const PartyType = zod.enum(["customer", "vendor"]);
+export const PartyType = zod.enum(["customer", "vendor", "both"]);
 
 /**
  * @summary List all parties
@@ -91,6 +91,7 @@ export const UpdatePartyParams = zod.object({
 });
 
 export const UpdatePartyBody = zod.object({
+  partyType: PartyType.optional(),
   name: zod.string().min(1).optional(),
   email: zod.email().optional(),
   phone: zod.string().optional(),

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, partiesTable } from "../db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 import {
   CreatePartyBody,
   UpdatePartyBody,
@@ -39,7 +39,11 @@ router.get("/", async (req, res) => {
   try {
     const conditions = [eq(partiesTable.userId, userId)];
     if (queryParsed.data.type) {
-      conditions.push(eq(partiesTable.partyType, queryParsed.data.type));
+      // A party marked "both" can be used in sales and purchase workflows.
+      const types: ("customer" | "vendor" | "both")[] = queryParsed.data.type === "both"
+        ? ["both"]
+        : [queryParsed.data.type, "both"];
+      conditions.push(inArray(partiesTable.partyType, types));
     }
     const parties = await db
       .select()
@@ -109,6 +113,7 @@ router.patch("/:id", async (req, res) => {
     return;
   }
   const updates: Record<string, unknown> = {};
+  if (parsed.data.partyType !== undefined) updates.partyType = parsed.data.partyType;
   if (parsed.data.name !== undefined) updates.name = parsed.data.name;
   if (parsed.data.email !== undefined) updates.email = parsed.data.email;
   if (parsed.data.phone !== undefined) updates.phone = parsed.data.phone;
