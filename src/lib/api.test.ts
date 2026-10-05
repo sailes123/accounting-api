@@ -59,7 +59,11 @@ describe("ListPartiesQueryParams", () => {
   });
 
   it("allows a valid type filter", () => {
-    expect(ListPartiesQueryParams.safeParse({ type: "vendor" }).success).toBe(true);
+    expect(ListPartiesQueryParams.safeParse({ type: "vendor" }).data?.type).toEqual(["vendor"]);
+  });
+
+  it("allows multiple type filters", () => {
+    expect(ListPartiesQueryParams.safeParse({ type: ["vendor", "both"] }).data?.type).toEqual(["vendor", "both"]);
   });
 
   it("rejects an invalid type filter", () => {

@@ -39,10 +39,12 @@ router.get("/", async (req, res) => {
   try {
     const conditions = [eq(partiesTable.userId, userId)];
     if (queryParsed.data.type) {
-      // A party marked "both" can be used in sales and purchase workflows.
-      const types: ("customer" | "vendor" | "both")[] = queryParsed.data.type === "both"
-        ? ["both"]
-        : [queryParsed.data.type, "both"];
+      // A party marked "both" is eligible wherever either selected role is.
+      // For example, `?type=vendor&type=both` returns vendors and both-role parties.
+      const types = [...new Set([
+        ...queryParsed.data.type,
+        ...(queryParsed.data.type.some((type) => type !== "both") ? ["both" as const] : []),
+      ])];
       conditions.push(inArray(partiesTable.partyType, types));
     }
     const parties = await db

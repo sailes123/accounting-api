@@ -41,7 +41,12 @@ export const PartyType = zod.enum(["customer", "vendor", "both"]);
  * @summary List all parties
  */
 export const ListPartiesQueryParams = zod.object({
-  type: PartyType.optional(),
+  // Express parses repeated query keys as an array. Accept a single key too,
+  // so existing callers using `?type=vendor` remain compatible.
+  type: zod.preprocess(
+    (value) => value === undefined ? undefined : Array.isArray(value) ? value : [value],
+    zod.array(PartyType).min(1).optional(),
+  ),
 });
 
 export const ListPartiesResponseItem = zod.object({
