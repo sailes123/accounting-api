@@ -56,10 +56,16 @@ export const ListPartiesResponseItem = zod.object({
   email: zod.string().nullish(),
   phone: zod.string(),
   address: zod.string(),
+  shippingAddress: zod.string().nullish(),
+  partyCode: zod.string().nullish(),
+  additionalPhone: zod.string().nullish(),
   panType: PanType.nullish(),
   panNumber: zod.string().nullish(),
   remarks: zod.string().nullish(),
   balance: zod.number(),
+  balanceDirection: zod.enum(["receive", "give"]).nullish(),
+  balanceAsOfDate: zod.string().nullish(),
+  creditLimit: zod.number().nullish(),
   createdAt: zod.string(),
 });
 export const ListPartiesResponse = zod.array(ListPartiesResponseItem);
@@ -73,10 +79,16 @@ export const CreatePartyBody = zod.object({
   email: zod.email().optional(),
   phone: zod.string(),
   address: zod.string(),
+  shippingAddress: zod.string().optional(),
+  partyCode: zod.string().optional(),
+  additionalPhone: zod.string().optional(),
   panType: PanType.optional(),
   panNumber: zod.string().optional(),
   remarks: zod.string().optional(),
   balance: zod.number().optional(),
+  balanceDirection: zod.enum(["receive", "give"]).optional(),
+  balanceAsOfDate: zod.string().optional(),
+  creditLimit: zod.number().optional(),
 });
 
 /**
@@ -101,10 +113,16 @@ export const UpdatePartyBody = zod.object({
   email: zod.email().optional(),
   phone: zod.string().optional(),
   address: zod.string().optional(),
+  shippingAddress: zod.string().optional(),
+  partyCode: zod.string().optional(),
+  additionalPhone: zod.string().optional(),
   panType: PanType.optional(),
   panNumber: zod.string().optional(),
   remarks: zod.string().optional(),
   balance: zod.number().optional(),
+  balanceDirection: zod.enum(["receive", "give"]).optional(),
+  balanceAsOfDate: zod.string().optional(),
+  creditLimit: zod.number().optional(),
 });
 
 export const UpdatePartyResponse = ListPartiesResponseItem;

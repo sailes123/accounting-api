@@ -16,10 +16,16 @@ export const partiesTable = pgTable("parties", {
   email: text("email"),
   phone: text("phone").notNull(),
   address: text("address").notNull(),
+  shippingAddress: text("shipping_address"),
+  partyCode: text("party_code"),
+  additionalPhone: text("additional_phone"),
   panType: text("pan_type", { enum: ["PAN", "VAT", "NONE"] }),
   panNumber: text("pan_number"),
   remarks: text("remarks"),
   balance: numeric("balance", { precision: 12, scale: 2 }).notNull().default("0"),
+  balanceDirection: text("balance_direction", { enum: ["receive", "give"] }),
+  balanceAsOfDate: text("balance_as_of_date"),
+  creditLimit: numeric("credit_limit", { precision: 12, scale: 2 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -21,10 +21,16 @@ function fmt(p: typeof partiesTable.$inferSelect) {
     email: p.email,
     phone: p.phone,
     address: p.address,
+    shippingAddress: p.shippingAddress,
+    partyCode: p.partyCode,
+    additionalPhone: p.additionalPhone,
     panType: p.panType,
     panNumber: p.panNumber,
     remarks: p.remarks,
     balance: Number(p.balance),
+    balanceDirection: p.balanceDirection,
+    balanceAsOfDate: p.balanceAsOfDate,
+    creditLimit: p.creditLimit === null ? null : Number(p.creditLimit),
     createdAt: p.createdAt.toISOString(),
   };
 }
@@ -66,11 +72,11 @@ router.post("/", async (req, res) => {
     res.status(400).json({ error: "Invalid request body" });
     return;
   }
-  const { partyType, name, email, phone, address, panType, panNumber, remarks, balance } = parsed.data;
+  const { partyType, name, email, phone, address, shippingAddress, partyCode, additionalPhone, panType, panNumber, remarks, balance, balanceDirection, balanceAsOfDate, creditLimit } = parsed.data;
   try {
     const [party] = await db
       .insert(partiesTable)
-      .values({ userId, partyType, name, email, phone, address, panType, panNumber, remarks, balance: String(balance ?? 0) })
+      .values({ userId, partyType, name, email, phone, address, shippingAddress, partyCode, additionalPhone, panType, panNumber, remarks, balance: String(balance ?? 0), balanceDirection, balanceAsOfDate, creditLimit: creditLimit === undefined ? undefined : String(creditLimit) })
       .returning();
     res.status(201).json(fmt(party));
   } catch (err) {
@@ -120,10 +126,16 @@ router.patch("/:id", async (req, res) => {
   if (parsed.data.email !== undefined) updates.email = parsed.data.email;
   if (parsed.data.phone !== undefined) updates.phone = parsed.data.phone;
   if (parsed.data.address !== undefined) updates.address = parsed.data.address;
+  if (parsed.data.shippingAddress !== undefined) updates.shippingAddress = parsed.data.shippingAddress;
+  if (parsed.data.partyCode !== undefined) updates.partyCode = parsed.data.partyCode;
+  if (parsed.data.additionalPhone !== undefined) updates.additionalPhone = parsed.data.additionalPhone;
   if (parsed.data.panType !== undefined) updates.panType = parsed.data.panType;
   if (parsed.data.panNumber !== undefined) updates.panNumber = parsed.data.panNumber;
   if (parsed.data.remarks !== undefined) updates.remarks = parsed.data.remarks;
   if (parsed.data.balance !== undefined) updates.balance = String(parsed.data.balance);
+  if (parsed.data.balanceDirection !== undefined) updates.balanceDirection = parsed.data.balanceDirection;
+  if (parsed.data.balanceAsOfDate !== undefined) updates.balanceAsOfDate = parsed.data.balanceAsOfDate;
+  if (parsed.data.creditLimit !== undefined) updates.creditLimit = String(parsed.data.creditLimit);
   try {
     const [party] = await db
       .update(partiesTable)

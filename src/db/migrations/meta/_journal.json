@@ -148,6 +148,13 @@
       "when": 1791132390252,
       "tag": "0020_nifty_nekra",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791302741926,
+      "tag": "0021_quiet_morbius",
+      "breakpoints": true
     }
   ]
 }
